@@ -38,7 +38,7 @@ def translate(message):
         return bot.edit_message_text("Add languages for translation",  chat_id=message.chat.id, message_id=message.message_id, reply_markup=keyboard)
     mes_ind = bot.edit_message_text("Enter text to translate",  chat_id=message.chat.id, message_id=message.message_id, reply_markup=keyboard)
     start_translate(message, mes_ind)
-    # bot.register_next_step_handler(message, start_translate)
+
 
 
 def add_land(message):

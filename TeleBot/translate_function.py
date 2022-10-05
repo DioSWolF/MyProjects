@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
+import re
 from googletrans import Translator
 from change_lang_translate import lang_transl, input_lang
 from phrases_list import help_bot
@@ -88,18 +89,19 @@ def correct_text(text):
                 sentense_list = []
 
         elif (word == "OR") or (word == "AND") or (word == "NOT"):
-            
-            if sentense_list[0][0] != '"' and sentense_list[-1][-1] != '"':
-                
-                if len(sentense_list) > 1:
-                    sentense_list[0] = f'"{sentense_list[0]}'
-                    sentense_list[-1] = f'{sentense_list[-1]}"'
-                    sentense_str = " ".join(sentense_list)
-                    text_list.append(sentense_str)
-                else:   
-                    text_list.extend(sentense_list)
-                sentense_list = []
+            try:
+                if sentense_list[0][0] != '"' and sentense_list[-1][-1] != '"':
 
+                    if len(sentense_list) > 1:
+                        sentense_list[0] = f'"{sentense_list[0]}'
+                        sentense_list[-1] = f'{sentense_list[-1]}"'
+                        sentense_str = " ".join(sentense_list)
+                        text_list.append(sentense_str)
+                    else:   
+                        text_list.extend(sentense_list)
+                    sentense_list = []
+            except:
+                pass
             else:
                 text_list.extend(sentense_list)
                 sentense_list = []
@@ -110,16 +112,26 @@ def correct_text(text):
     del text_list[-1]
 
     text_str = " ".join(text_list)
+
     return text_str
 
 
 def main(message):
     return_final_text = {}
-    if len(message.text) > 3500:
-        bot.send_message(message.chat.id, "Text too long, max 3500 symbols")
+    if len(message.text) > 3700:
+        bot.delete_message(message.chat.id, message.message_id +1)
+        bot.send_message(message.chat.id, "Text too long, max 3700 symbols")
         return 
     orig_text = message.text.strip()
-    replace_text = orig_text.replace("NOT", "|||").replace("OR", "||").replace("AND", "|")                
+    replace_text = orig_text.replace("NOT", "|||").replace("OR", "||").replace("AND", "|")
+
+    near_list = set(re.findall(r"NEAR/\d+", replace_text))
+    near_list = list(near_list)
+    near_list.sort()
+    near_list.sort(key=len, reverse=True)
+    for word_near in near_list:
+        replace_text = replace_text.replace(word_near, f"#{word_near}#")
+
     replace_text = replace_text.split()
     replace_text.append(" OR #qweasdzxc#")
 
