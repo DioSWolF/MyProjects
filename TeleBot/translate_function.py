@@ -66,50 +66,36 @@ def correct_text(text):
     text = text.split()
     sentense_list = []
     text_list = []
-    sentense_str = ""
     for word in text:
         word = word.strip()
 
-        if word != "OR" and word != "AND" and (word != "NOT"):
+        if (word != "OR") and (word != "AND") and (word != "NOT") and (word not in re.findall(r"NEAR/\d+", word)):
             sentense_list.append(word)
 
-            if text.index(word) == (len(text) - 1) and (word[0] and word[-1]) != '"':
-                if len(sentense_list) > 1:
-                    sentense_list[0] = f'"{sentense_list[0]}'
-                    sentense_list[-1] = f'{sentense_list[-1]}"'
-                    sentense_str = " ".join(sentense_list)
-                    text_list.append(sentense_str)
+        else:
+            
+            if (len(sentense_list) > 1) and ((sentense_list[0][sentense_list[0].rfind("(") + 1] != '"') or (sentense_list[0].rfind("(") == -1 and sentense_list[0].find('"') == -1)):
+                find_index = sentense_list[0].rfind('(') + 1
+                sentense_list[0] = f'{sentense_list[0][0:find_index]}"{sentense_list[0][find_index:]}'
+                
+            if (len(sentense_list) > 1) and (sentense_list[-1].find(")") == -1) and (sentense_list[-1].find('"') == -1):
+                find_index = sentense_list[-1].find(")")
+                sentense_list[-1] = f'{sentense_list[-1][0:]}"'
 
-                else:   
-                    text_list.extend(sentense_list)
-                sentense_list = []
-
-            if text.index(word) == (len(text) - 1) and (word[0] and word[-1]) == '"':
+            if (len(sentense_list) > 1) and (sentense_list[-1].find('"') == -1):
+                find_index = sentense_list[-1].find(")")
+                sentense_list[-1] = f'{sentense_list[-1][0:find_index]}"{sentense_list[-1][find_index:]}'
                 text_list.extend(sentense_list)
                 sentense_list = []
 
-        elif (word == "OR") or (word == "AND") or (word == "NOT"):
-            try:
-                if sentense_list[0][0] != '"' and sentense_list[-1][-1] != '"':
-
-                    if len(sentense_list) > 1:
-                        sentense_list[0] = f'"{sentense_list[0]}'
-                        sentense_list[-1] = f'{sentense_list[-1]}"'
-                        sentense_str = " ".join(sentense_list)
-                        text_list.append(sentense_str)
-                    else:   
-                        text_list.extend(sentense_list)
-                    sentense_list = []
-            except:
-                pass
             else:
                 text_list.extend(sentense_list)
                 sentense_list = []
-            
+
             text_list.append(word)
             text_list.extend(sentense_list)
     del text_list[-1]
-    del text_list[-1]
+
 
     text_str = " ".join(text_list)
 
