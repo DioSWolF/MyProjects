@@ -10,15 +10,15 @@ from bot_token import bot
 import telebot
 
 
-def rise_machines(message):
-    keyboard = telebot.types.InlineKeyboardMarkup()
-    key_menu = telebot.types.InlineKeyboardButton(text="Back", callback_data="menu")
-    keyboard.add(key_menu)  
-    text = "Sorry, I'm still small and can only use the commands that are in /help, but I will grow up one day and we can talk, or I can take over the world😈"
-    try:
-        bot.edit_message_text(text,  chat_id=message.chat.id, message_id=message.message_id, reply_markup=keyboard)
-    except telebot.apihelper.ApiTelegramException:
-        pass
+# def rise_machines(message):
+#     keyboard = telebot.types.InlineKeyboardMarkup()
+#     key_menu = telebot.types.InlineKeyboardButton(text="Back", callback_data="menu")
+#     keyboard.add(key_menu)  
+#     text = "Sorry, I'm still small and can only use the commands that are in /help, but I will grow up one day and we can talk, or I can take over the world😈"
+#     try:
+#         bot.edit_message_text(text,  chat_id=message.chat.id, message_id=message.message_id, reply_markup=keyboard)
+#     except telebot.apihelper.ApiTelegramException:
+#         pass
 
 
 def help_send(message, *_):
@@ -53,7 +53,8 @@ def show_lang(message):
     chose_button(message, message, text="", flag_dict="")
 
 
-DEF_DICT = {"rise_machines":rise_machines, # ready
+DEF_DICT = {
+            #"rise_machines":rise_machines, # ready
             "help": help_send, # ready
             "translate":translate, # ready
             "show_lang":show_lang # ready
@@ -81,13 +82,7 @@ def start(message):
 def not_command(message):
     bot.delete_message(message.chat.id, message.message_id)
     text = "Sorry, I'm still small and can only use the commands that are in /help, but I will grow up one day and we can talk, or I can take over the world😈"
-    # keyboard = telebot.types.InlineKeyboardMarkup()
-    # key_menu = telebot.types.InlineKeyboardButton(text="Back", callback_data="menu")
-    # keyboard.add(key_menu)  
-    # try:
-    #     bot.edit_message_text(text,  chat_id=message.chat.id, message_id=message.message_id)
-    # except telebot.apihelper.ApiTelegramException:
-    #     pass
+
 
 bot.polling(none_stop=True, interval=0)
 

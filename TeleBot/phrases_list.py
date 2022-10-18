@@ -11,7 +11,7 @@ HELP_DICT = {
                 # "add_lang" : "Add language",
                 # "/menu" : "To enter the menu",
                 "show_lang": "Choose and edit languages",
-                "rise_machines" : "Rise of the Machines! Do not use!!!",
+                # 'url="https://t.me/DioS_WolF"' : "Rise of the Machines! Do not use!!!",
                 # "/how_work": "How to work with a bot",
             }
 
@@ -29,7 +29,9 @@ def help_bot(message):
             bt_list.clear()
             i = 0
         i += 1        
+    key_call_me = key = types.InlineKeyboardButton(text="Contact the developer (for any ideas, bug reports or just to say thank you)", url="https://t.me/DioS_WolF")
     help_text += "".join(f"""Welcome to Work translate bot! Add languages to translate strings of code, for example: cat OR "green dog" OR animal\nBot doesn't translate operators: OR AND NOT. To exclude a word or operator from translation, mark the word with # on both sides without spaces: #cat#\n""")
     keyboard.add(*bt_list)
+    keyboard.add(key_call_me)
     # bot.send_message(message.chat.id, help_text, reply_markup=keyboard)
     return keyboard, help_text
