@@ -4,11 +4,65 @@
 # from bot_log import log_file
 
 
+from collections import UserDict
+import pickle
 import telebot
 from phrases_list import help_bot
 from bot_token import bot
 from telebot import types
 
+
+class Singleton(object):
+    _instance = None
+
+
+    def __new__(class_, *args, **kwargs):
+
+        if not isinstance(class_._instance, class_):
+            class_._instance = object.__new__(class_, *args, **kwargs)
+
+        return class_._instance
+        
+class UserLang(Singleton, UserDict):
+
+    def add_data(self, user_id, lang_dict) -> None:
+        
+        self.load_data()
+
+        if user_id in self.data:
+            self.data[user_id].update(lang_dict)
+
+        else:
+            self.data[user_id] = lang_dict
+        self.save_data()
+
+    def delete_data(self, user_id, key_lang) -> None:
+        self.load_data()
+        if user_id in self.data:
+            del self.data[user_id][key_lang]
+        self.save_data()
+
+    def save_data(self) -> None:
+
+        with open(".\\user_lang_dict.bin", "wb") as file:
+            pickle.dump(self.data, file)
+
+
+    def load_data(self) -> None:
+
+        try:
+
+            with open(".\\user_lang_dict.bin", "rb") as file:
+                self.data = pickle.load(file)
+                return self.data 
+
+        except FileNotFoundError:
+
+            with open(".\\user_lang_dict.bin", "wb") as file:
+                pickle.dump({}, file)
+
+            with open(".\\user_lang_dict.bin", "rb") as file:
+                return 
 
 LANG_DICT = {
 "af": "afrikaans", "sq": "albanian", "am": "amharic", "ar": "arabic", "hy": "armenian", "az": "azerbaijani", 
@@ -28,43 +82,41 @@ LANG_DICT = {
 "xh": "xhosa", "yi": "yiddish", "yo": "yoruba", "zu": "zulu"}
 
 
-lang_transl = {}
+lang_transl = UserLang()
 input_lang = "en"
 find_lang = {}
 
 
 def chose_button(message, id_mess, text="", flag_dict=None):
-    
+
+    if message.chat.id not in lang_transl:
+        lang_transl[message.chat.id] = {}
     if flag_dict == "added":
         keyboard = types.InlineKeyboardMarkup()
         bt_in_line = []
-        for bt_callback, bt_name in find_lang.items():
+        for bt_callback, bt_name in find_lang[message.chat.id].items():
             key_lang = types.InlineKeyboardButton(text=bt_name, callback_data=f"added_new,{bt_callback},{bt_name}")
             bt_in_line.append(key_lang)
         keyboard.row_width = 3
         lang_list = []
-        for value in lang_transl.values():
+        for value in lang_transl[message.chat.id].values():
             lang_list.append(value)
-        page_lange(message, id_mess, keyboard, bt_in_line, f"I have found {len(lang_transl)} languages for you:\n{', '.join(lang_list)}\nClick to choose the ones you need")
+        page_lange(message, id_mess, keyboard, bt_in_line, f"I have chosen {len(lang_list)} languages for you:\n{', '.join(lang_list)}\nClick to choose the ones you need")
         return
 
     elif flag_dict == "":
         keyboard = types.InlineKeyboardMarkup()
         bt_in_line = []
-        for bt_callback, bt_name in lang_transl.items():
+        for bt_callback, bt_name in lang_transl[message.chat.id].items():
             key_lang = types.InlineKeyboardButton(text=bt_name, callback_data=f"delete_lang,{bt_callback}")
             bt_in_line.append(key_lang)
         keyboard.row_width = 3
         lang_list = []
-        for value in lang_transl.values():
+        for value in lang_transl[message.chat.id].values():
             lang_list.append(value)
-        page_lange(message, id_mess, keyboard, bt_in_line, f"You have chosen {len(lang_transl)} languages:\n{', '.join(lang_transl)}\nClick to delete the ones you don't need")
+        page_lange(message, id_mess, keyboard, bt_in_line, f"You have chosen {len(lang_list)} languages:\n{', '.join(lang_list)}\nClick to delete the ones you don't need")
         return
-    # keyboard = types.InlineKeyboardMarkup()
-    # key_menu = types.InlineKeyboardButton(text="Back", callback_data="menu")
-    # key_find = types.InlineKeyboardButton(text="Add languages", callback_data="find_again")
-    # keyboard.add(key_menu, key_find)   
-    # id_mess = bot.edit_message_text(text, chat_id=message.chat.id, message_id=id_mess.message_id, reply_markup=keyboard)
+
     return id_mess
 
 
@@ -98,13 +150,14 @@ def chose_lang(message, id_mess):
             id_mess = chose_button(message, id_mess, "No results")
         except telebot.apihelper.ApiTelegramException:
             pass
-        return 
+        # return find_again(message)
     return list_lang(message, len_list_keys, len_list_values, id_mess)
 
 
 def list_lang(message, len_list_keys, len_list_values, id_mess):
     global find_lang
-    find_lang.update(dict(zip(len_list_keys, len_list_values)))
+
+    find_lang[message.chat.id] = dict(zip(len_list_keys, len_list_values))
     id_mess = chose_button(message, id_mess, f"You have chosen {len(find_lang)} languages:\nClick to delete the ones you don't need", flag_dict="added")
     return id_mess
 
@@ -118,6 +171,7 @@ def exit_menu(call):
 
 
 def find_again(call):
+    lang_transl.load_data()
     keyboard = types.InlineKeyboardMarkup()
     key_menu = types.InlineKeyboardButton(text="Back", callback_data="menu")
     keyboard.add(key_menu)  
@@ -129,13 +183,13 @@ def added_find_lang(message):
     global find_lang
     global lang_transl
 
-    lang_transl[message.data.split(",")[1]] = message.data.split(",")[2]
-    del find_lang[message.data.split(",")[1]]
+    lang_transl.add_data(message.message.chat.id, {message.data.split(",")[1] : message.data.split(",")[2]})
+    del find_lang[message.message.chat.id][message.data.split(",")[1]]
     chose_button(message.message, message.message, text="", flag_dict="added")
 
 
 def delete_find_lang(message):
-    del lang_transl[message.data.split(",")[1]]
+    lang_transl.delete_data(message.message.chat.id, message.data.split(",")[1])
     chose_button(message.message, message.message, text="", flag_dict="")
 
 

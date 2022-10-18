@@ -33,8 +33,8 @@ def translate(message):
     keyboard = telebot.types.InlineKeyboardMarkup()
     key_menu = telebot.types.InlineKeyboardButton(text="Back", callback_data="menu")
     keyboard.add(key_menu)  
-
-    if len(lang_transl) == 0:
+    lang_transl.load_data()
+    if message.chat.id not in lang_transl or len(lang_transl[message.chat.id]) == 0:
         return bot.edit_message_text("Add languages for translation",  chat_id=message.chat.id, message_id=message.message_id, reply_markup=keyboard)
     mes_ind = bot.edit_message_text("Enter text to translate",  chat_id=message.chat.id, message_id=message.message_id, reply_markup=keyboard)
     start_translate(message, mes_ind)
@@ -46,13 +46,16 @@ def add_land(message):
 
 
 def show_lang(message):
+    lang_transl.load_data()
+
+    if message.chat.id not in lang_transl:
+        lang_transl[message.chat.id] = {}
     chose_button(message, message, text="", flag_dict="")
 
 
 DEF_DICT = {"rise_machines":rise_machines, # ready
             "help": help_send, # ready
             "translate":translate, # ready
-            # "add_lang":add_land, # ready
             "show_lang":show_lang # ready
             }
 

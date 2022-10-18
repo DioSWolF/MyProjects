@@ -13,10 +13,7 @@ from telebot import types
 def delete_symbol_in_text(text):
     CLEAN_LIST = "«", "»", "„", "”", "「", "」", "“", "《", "》"
 
-    for i in CLEAN_LIST:
-        text.replace(i, "")
     new_text = ""
-
     for i in text:
         if i in CLEAN_LIST:
             i = u'"'
@@ -120,8 +117,8 @@ def main(message):
 
     replace_text = replace_text.split()
     replace_text.append(" OR #qweasdzxc#")
-
-    for lang, value_lang in lang_transl.items():
+    lang_transl.load_data()
+    for lang, value_lang in lang_transl[message.chat.id].items():
         transl_text = translate_text(replace_text, lang)
         final_text = transl_text.replace("|||", "NOT").replace("||", "OR").replace("|", "AND").replace("#", "")
         final_text = delete_symbol_in_text(final_text)
