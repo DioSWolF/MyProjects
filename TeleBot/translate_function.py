@@ -135,14 +135,18 @@ def main(message):
         replace_text = replace_text.replace(word_near, f"#{word_near}#")
 
     lang_transl.load_data()
+
+    replace_text = replace_text.split()
+    replace_text.append(" OR #qweasdzxc#")
+
     for lang, value_lang in lang_transl[message.chat.id].items():
-        replace_text = replace_text.split()
-        replace_text.append(" OR #qweasdzxc#")
+
         transl_text = translate_text(replace_text, lang)
         final_text = transl_text.replace("|||", "NOT").replace("||", "OR").replace("|", "AND").replace("#", "")
         final_text = delete_symbol_in_text(final_text)
         final_text = correct_text(final_text)
         return_final_text[value_lang] = final_text
+        
     return return_final_text
 
     
