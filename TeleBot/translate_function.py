@@ -63,6 +63,8 @@ def correct_text(text):
     text = text.split()
     sentense_list = []
     text_list = []
+    error_elements = [f"ATTENTION! System can not process this element(s) correctly:\n"]
+    i = 0
     for word in text:
         word = word.strip()
 
@@ -70,20 +72,36 @@ def correct_text(text):
             sentense_list.append(word)
 
         else:
-            
-            if (len(sentense_list) > 1) and ((sentense_list[0][sentense_list[0].rfind("(") + 1] != '"') or (sentense_list[0].rfind("(") == -1 and sentense_list[0].find('"') == -1)):
-                find_index = sentense_list[0].rfind('(') + 1
-                sentense_list[0] = f'{sentense_list[0][0:find_index]}"{sentense_list[0][find_index:]}'
-                
-            if (len(sentense_list) > 1) and (sentense_list[-1].find(")") == -1) and (sentense_list[-1].find('"') == -1):
-                find_index = sentense_list[-1].find(")")
-                sentense_list[-1] = f'{sentense_list[-1][0:]}"'
 
-            if (len(sentense_list) > 1) and (sentense_list[-1].find('"') == -1):
-                find_index = sentense_list[-1].find(")")
-                sentense_list[-1] = f'{sentense_list[-1][0:find_index]}"{sentense_list[-1][find_index:]}'
-                text_list.extend(sentense_list)
-                sentense_list = []
+            try:
+                if (len(sentense_list) > 1) and ((sentense_list[0][sentense_list[0].rfind("(") + 1] != '"') or (sentense_list[0].rfind("(") == -1 and sentense_list[0].find('"') == -1)):
+                    find_index = sentense_list[0].rfind('(') + 1
+                    sentense_list[0] = f'{sentense_list[0][0:find_index]}"{sentense_list[0][find_index:]}'
+            
+            except IndexError:
+                i += 1
+                error_elements.extend(f"{i}) {' '.join(sentense_list)}\n")
+
+
+            try:
+                if (len(sentense_list) > 1) and (sentense_list[-1].find(")") == -1) and (sentense_list[-1].find('"') == -1):
+                    find_index = sentense_list[-1].find(")")
+                    sentense_list[-1] = f'{sentense_list[-1][0:]}"'
+
+            except IndexError:
+                i += 1
+                error_elements.extend(f"{' '.join(sentense_list)}\n")
+           
+            try:
+                if (len(sentense_list) > 1) and (sentense_list[-1].find('"') == -1):
+                    find_index = sentense_list[-1].find(")")
+                    sentense_list[-1] = f'{sentense_list[-1][0:find_index]}"{sentense_list[-1][find_index:]}'
+                    text_list.extend(sentense_list)
+                    sentense_list = []
+                    
+            except IndexError:
+                i += 1
+                error_elements.extend(f"{' '.join(sentense_list)}\n")
 
             else:
                 text_list.extend(sentense_list)
@@ -93,7 +111,8 @@ def correct_text(text):
             text_list.extend(sentense_list)
     del text_list[-1]
 
-
+    if len(error_elements) > 1:
+        text_list.insert(0, f"\n{''.join(error_elements)}\n")
     text_str = " ".join(text_list)
 
     return text_str
@@ -115,10 +134,10 @@ def main(message):
     for word_near in near_list:
         replace_text = replace_text.replace(word_near, f"#{word_near}#")
 
-    replace_text = replace_text.split()
-    replace_text.append(" OR #qweasdzxc#")
     lang_transl.load_data()
     for lang, value_lang in lang_transl[message.chat.id].items():
+        replace_text = replace_text.split()
+        replace_text.append(" OR #qweasdzxc#")
         transl_text = translate_text(replace_text, lang)
         final_text = transl_text.replace("|||", "NOT").replace("||", "OR").replace("|", "AND").replace("#", "")
         final_text = delete_symbol_in_text(final_text)
