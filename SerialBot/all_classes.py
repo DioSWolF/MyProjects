@@ -7,6 +7,13 @@ from abc import ABC, abstractclassmethod
 import telebot.async_telebot
 from bs4 import BeautifulSoup
 import uuid
+from telebot.asyncio_handler_backends import State, StatesGroup
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ state classes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class MyStates(StatesGroup):
+    find_text = State()
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ find anime classes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -78,8 +85,8 @@ class PageAnime(ValueAnime):
         self.__value = value.select_one(".h5").select_one("a").get("href")
 
 
-class SeriesNumber(ValueAnime):
-    
+class SeriesNum(ValueAnime): # need to update
+
     @property
     def value(self) -> str:
         return self.__value
@@ -87,10 +94,7 @@ class SeriesNumber(ValueAnime):
 
     @value.setter
     def value(self, value) -> str: 
-        if value == None:
-            self.__value = None
-        else:
-            self.__value = value # need to update
+        self.__value = int(value) # need to update
 
 
 class ImageAnime():
@@ -125,17 +129,16 @@ class ImageAnime():
 
 
 class Anime:
-    find_flag = False
+    new_today = False
 
-    def __init__(self, eng_title, rus_title, page, image, counter, series_number = None) -> None:
+    def __init__(self, eng_title, rus_title, page, image, series_num = 0, counter = None,) -> None:
         self.eng_title: EngTitleAnime = eng_title
         self.rus_title: RusTitleAnime = rus_title
         self.page: PageAnime = page
         self.image: ImageAnime = image
+        self.series_num: SeriesNum = series_num
+        self.counter: None | int = counter
 
-        self.counter:int = counter
-
-        self.series_number: SeriesNumber = series_number
 
 
 class FindAnimeList(UserList):
@@ -143,6 +146,75 @@ class FindAnimeList(UserList):
     def add_data(self, anime: Anime) -> None:
         self.data.append(anime)
 
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Anime today ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class AnimeTodayValue(ABC):
+    def __init__(self, value) -> None:
+        super().__init__()
+        self.__value: str = ""
+        self.value: str = value
+
+
+    @property 
+    @abstractclassmethod
+    def value(self) -> str:
+        pass
+
+
+    @value.setter
+    @abstractclassmethod
+    def value(self, value) -> str: 
+        pass
+
+
+class NameFindAnimeToday(AnimeTodayValue): 
+
+    @property
+    def value(self) -> str:
+        return self.__value
+
+
+    @value.setter
+    def value(self, value) -> str: 
+        self.__value = value.select_one(".last-update-title, font-weight-600").text
+
+
+class SeriesNumberToday(AnimeTodayValue): 
+    
+    @property
+    def value(self) -> str:
+        return self.__value
+
+
+    @value.setter
+    def value(self, value) -> str: 
+        value = value.select_one(".ml-3").text
+        value = value.split("(")[0]
+        self.__value = value.split()[0]
+
+
+class VoiceActingToday(AnimeTodayValue): 
+
+    @property
+    def value(self) -> str:
+        return self.__value
+
+
+    @value.setter
+    def value(self, value) -> str: 
+        value = value.select_one(".ml-3").text
+        value = value.split("(")[1]
+        self.__value = value.replace(")", "")
+
+
+class AnimeToday:
+
+    def __init__(self, name, series_number, voice_acting) -> None:
+        self.name: NameFindAnimeToday = name
+        self.series_number: SeriesNumberToday = series_number
+        self.voice_acting: VoiceActingToday = voice_acting
+        
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ User info ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

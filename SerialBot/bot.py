@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
+from telebot import asyncio_filters
 import telebot.async_telebot
 from random_word import RandomWords
-from bot_token import bot
+from bot_token import bot, bot_id
 import asyncio
 #~~~~~~~~~~~~~~~~~~~~~ create buttons ~~~~~~~~~~~~~~~~~~~~~
 from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, return_anime_dict, dump_num, create_image_text_message
 #~~~~~~~~~~~~~~~~~~~~~ bot functions ~~~~~~~~~~~~~~~~~~~~~
-from bot_functions import return_find_anime, add_new_anime_and_user, delete_anime_in_chat_id, info_chat_create, user_info_create, get_list_anime, return_image_dict, get_user_bazedata
-from telebot.asyncio_handler_backends import State, StatesGroup
-from telebot.async_telebot import logging
+from bot_functions import return_find_anime, add_new_anime_and_user, delete_anime_in_chat_id, info_chat_create, user_info_create, get_list_anime, get_user_bazedata, find_user_info
+#~~~~~~~~~~~~~~~~~~~~~ state class ~~~~~~~~~~~~~~~~~~~~~
+from all_classes import MyStates 
 
-class MyStates(StatesGroup):
-    find_text = State()
+from push_while_true import find_new_anime_today
 
 
 functions_ready = {
@@ -31,7 +30,6 @@ functions_ready = {
                             "~~ change push time" : "", 
                             "~~ delete push time" : ""
 }
-
 
 
 #~~~~~~~~~~~~~~~~~~~~~ get close function ~~~~~~~~~~~~~~~~~~~~~ ready
@@ -55,7 +53,7 @@ async def call_find(call):
 
         user_bazedata = get_user_bazedata()
 
-        if call.chat.id not in user_bazedata and call.from_user.id != 5604497270:
+        if call.chat.id not in user_bazedata and call.from_user.id != bot_id:
             user_info_create(call)
 
     await func(call)
@@ -69,8 +67,6 @@ ANIME_FIND_DICT = {}
 DICT_NUM_FIND = {}
 FIND_ANIME_DICT_PAGINATION = {}
 MEDIA_MESSAGE_ID = {}
-
-# start find
 
 
 async def find_anime(call: telebot.async_telebot.types.CallbackQuery) -> None:
@@ -158,6 +154,7 @@ async def get_find_list_anime(call, callback: telebot.async_telebot.types.Callba
 
     except KeyError:
         pass
+
     image_text_message = create_image_text_message(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]])
     
     edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}"
@@ -228,7 +225,7 @@ async def add_anime_in_list(call):
 
     spec_dict = {"Back" : "get_find_list_anime", "Find again" : "find_anime"}
 
-
+    
     for anime in FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]]:
         anime_indx = FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]].index(anime)
 
@@ -236,7 +233,8 @@ async def add_anime_in_list(call):
             if call.data.split("#")[1] == str(anime_indx):
                 for anime_save in ANIME_FIND_DICT[chat_info.chat_id.value]:
                     if anime_save.eng_title.value == anime.eng_title.value:
-                        add_new_anime_and_user(anime_save, chat_info)
+                        user_info = find_user_info(chat_info)
+                        add_new_anime_and_user(anime_save, user_info)
                         index_anime_save = ANIME_FIND_DICT[chat_info.chat_id.value].index(anime_save)
                         ANIME_FIND_DICT[chat_info.chat_id.value].pop(index_anime_save)
                 FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]].pop(anime_indx)
@@ -251,6 +249,7 @@ async def add_anime_in_list(call):
     if len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value]) == 0:
         rand_word = RandomWords()
         message.text = rand_word.get_random_word()[0:3]
+        print(message.text)
         ANIME_FIND_DICT[chat_info.chat_id.value] = return_find_anime(message)
         FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value] = return_anime_dict(ANIME_FIND_DICT[chat_info.chat_id.value])
         return await get_find_list_anime(message, callback=call)
@@ -343,9 +342,6 @@ async def start(message):
 async def delete_message(message):
 
     chat_info = info_chat_create(message)
-    user_bazedata = get_user_bazedata()
-
-    user_id = user_bazedata[chat_info.chat_id.value].user_id.value
 
     await bot.delete_message(chat_info.chat_id.value, chat_info.message_id.value)
 
@@ -393,13 +389,14 @@ async def start_show_list_anime(call):
         keyboard = create_special_buttons(keyboard, navig_bt)
 
     edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to open website anime\n Page №{DICT_NUM[chat_info.chat_id.value] + 1}"
+    
     try:
         for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
             await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
     except KeyError:
         pass
+
     image_text_message = create_image_text_message(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]])
-    
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
@@ -442,12 +439,12 @@ async def change_buttons_delete(call):
         pass
     image_text_message = create_image_text_message(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]])
     
-    
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
  
     return  
+
 
 # delete anime
 
@@ -470,7 +467,8 @@ async def delete_anime(call):
             if call.data.split("#")[1] == str(index_anime):
                 for anime_save in chat_anime:
                     if anime_save.eng_title.value == anime.eng_title.value:
-                        delete_anime_in_chat_id(anime_save, chat_info)
+                        user_info = find_user_info(chat_info)
+                        delete_anime_in_chat_id(anime_save, user_info)
                         index_anime_save = chat_anime.index(anime_save)
                         chat_anime.pop(index_anime_save)
                 ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]].pop(index_anime)
@@ -503,7 +501,6 @@ async def delete_anime(call):
     except KeyError:
         pass
     image_text_message = create_image_text_message(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]])
-    
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
@@ -571,6 +568,13 @@ FUNC_BACK_DICT =    {
 
 
 
-from telebot import asyncio_filters
-bot.add_custom_filter(asyncio_filters.StateFilter(bot))
-asyncio.run(bot.polling(none_stop=True, interval=0))
+
+
+async def main():
+    futures = [bot.polling(none_stop=True, interval=0), find_new_anime_today()]   # [while_true(), bot.polling(none_stop=True, interval=0)]
+    await asyncio.gather(*futures)
+
+    
+if __name__ == '__main__':
+    bot.add_custom_filter(asyncio_filters.StateFilter(bot))
+    asyncio.run(main())

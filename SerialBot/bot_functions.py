@@ -3,9 +3,11 @@
 
 
 from copy import deepcopy
+import aiohttp
 import requests
 from bs4 import BeautifulSoup
 import telebot.async_telebot
+from bot_token import find_anime_link, find_anime_num_page, find_new_anime_link
 
 # save data classes
 from singleton_classes import ImageAnimeDict, AnimeToChatIdDict, ChatIdToAnimeDict, InfoUserDict
@@ -24,7 +26,8 @@ def find_anime_animego(find_text: FindText, find_anime_list: FindAnimeList) -> N
     stop = []
 
     while stop == []:
-        find_link = f"https://animego.org/search/anime?q={find_text}&type=list&page={page_list}"
+
+        find_link = f"{find_anime_link}{find_text}{find_anime_num_page}{page_list}"
 
         with requests.get(find_link) as html_doc:
             soup = BeautifulSoup(html_doc.content, "lxml")
@@ -46,7 +49,9 @@ def create_anime(find_anime_list: FindAnimeList, soup: BeautifulSoup) -> None:
         rus_title = RusTitleAnime(element)
         page = PageAnime(element)
         image = ImageAnime(element)
+
         anime = Anime(eng_title, rus_title, page, image,  counter)
+
         find_anime_list.add_data(anime)
 
         counter += 1
@@ -109,14 +114,24 @@ def user_info_create(user_info: telebot.async_telebot.types.CallbackQuery) -> In
     user_is_bot = IsBot(user_info)
     user_lang = UserLanguage(user_info)
     user_prem = UserPremium(user_info)
+
     user_json = JsonUserInfo(user_info)
+
     new_user_info = InfoUser(user_id, chat_id, user_login, user_name, user_is_bot, user_lang, user_prem, user_json)
 
     save_user.add_data(new_user_info)
     return new_user_info
 
 
-def get_user_bazedata():
+def find_user_info(chat: InfoChat) -> InfoUser:
+
+    save_user = InfoUserDict()
+    save_user.load_data()
+
+    return save_user[chat.chat_id.value]
+
+
+def get_user_bazedata() -> InfoUserDict:
     save_user = InfoUserDict()
     save_user.load_data()
     save_user.save_data()
@@ -124,22 +139,22 @@ def get_user_bazedata():
     return save_user
 
 
-def add_new_anime_and_user(anime: Anime, chat: InfoChat) -> None:
+def add_new_anime_and_user(anime: Anime, user: InfoUser) -> None:
     
     dict_anime_to_chat = AnimeToChatIdDict()
     dict_chatid_to_anime = ChatIdToAnimeDict()
     
-    dict_anime_to_chat.add_data(anime, chat)
-    dict_chatid_to_anime.add_data(anime, chat)
+    dict_anime_to_chat.add_data(anime, user)
+    dict_chatid_to_anime.add_data(anime, user)
 
 
-def delete_anime_in_chat_id(anime: Anime, chat: InfoChat) -> None:
+def delete_anime_in_chat_id(anime: Anime, user: InfoUser) -> None:
 
     dict_anime_to_chat = AnimeToChatIdDict()
     dict_chatid_to_anime = ChatIdToAnimeDict()
 
-    dict_anime_to_chat.delete_anime_in_chatid(anime, chat)
-    dict_chatid_to_anime.delete_chatid_in_anime(anime, chat)
+    dict_anime_to_chat.delete_anime_in_chatid(anime, user)
+    dict_chatid_to_anime.delete_chatid_in_anime(anime, user)
     
 
 # Show list anime   ready
@@ -153,6 +168,7 @@ def get_list_anime() -> AnimeToChatIdDict:
 
     return dict_anime_to_chat
 
+
 def return_image_dict()-> list[ImageAnimeDict]:
 
     image_dict = ImageAnimeDict().load_data()
@@ -162,7 +178,11 @@ def return_image_dict()-> list[ImageAnimeDict]:
 
 
 
-
+async def find_new_seria():
+    async with aiohttp.ClientSession() as session:
+        async with session.get(find_new_anime_link) as resp:
+            print(resp.status)
+            print(await resp.text())
 
 
 
