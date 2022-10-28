@@ -1,4 +1,7 @@
 import asyncio
+from random import randrange
+import requests
+
 from telebot.async_telebot import types
 from bot_token import find_new_anime_link, bot
 
@@ -7,21 +10,22 @@ from bs4 import BeautifulSoup
 
 from singleton_classes import AnimeFindToday, ChatIdToAnimeDict
 from all_classes import NameFindAnimeToday, SeriesNumberToday, VoiceActingToday, AnimeToday
-
+from fake_useragent import UserAgent
 
 async def find_new_anime_today() -> None:
+    
     async with aiohttp.ClientSession() as session:
         while True:
-            await asyncio.sleep(10)
-            async with session.get(find_new_anime_link) as resp:
-                
+            headers = {"User-Agent" : UserAgent().random}
+            await asyncio.sleep(randrange(250, 500))
+            async with session.get(find_new_anime_link, headers=headers) as resp: 
                 soup = BeautifulSoup(await resp.text(), "lxml")
                 soup = soup.select_one("#slide-toggle-1")
 
             await create_new_anime_today(soup)
             user_push_dict = await create_message_text_dict()
             await send_push_message(user_push_dict)
-            
+      
 
 async def create_new_anime_today(anime_today_list: BeautifulSoup) -> None:
     anime_list = []

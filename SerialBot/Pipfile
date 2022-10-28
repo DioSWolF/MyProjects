@@ -13,6 +13,7 @@ random-word = "*"
 pillow = "*"
 aiohttp = "*"
 pytelegrambotapi = "*"
+fake-useragent = "*"
 
 [dev-packages]
 

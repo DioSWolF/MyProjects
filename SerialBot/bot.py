@@ -16,22 +16,6 @@ from all_classes import MyStates
 from push_while_true import find_new_anime_today
 
 
-functions_ready = {
-                    "find anime" : "ready",
-                        "~add anime in list" : "ready", 
-                    "show anime list" : "",
-                        "~ delete anime in list" : "nead to update", 
-                    "find new series" : "", 
-                    "choice push" : "", 
-                        "~ mute" : "",
-                        "~ when find new series push user" : "",
-                        "~ choice push time" : "",
-                            "~~ add new  push time" : "",
-                            "~~ change push time" : "", 
-                            "~~ delete push time" : ""
-}
-
-
 #~~~~~~~~~~~~~~~~~~~~~ get close function ~~~~~~~~~~~~~~~~~~~~~ ready
 
 async def close(*_):
@@ -130,7 +114,7 @@ async def get_find_list_anime(call, callback: telebot.async_telebot.types.Callba
         DICT_NUM_FIND[chat_info.chat_id.value] = 0
 
     if len(ANIME_FIND_DICT[chat_info.chat_id.value]) == 0:
-        ANIME_FIND_DICT[chat_info.chat_id.value] = return_find_anime(message)
+        ANIME_FIND_DICT[chat_info.chat_id.value] = await return_find_anime(message)
         FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value] = return_anime_dict(ANIME_FIND_DICT[chat_info.chat_id.value])
 
     if len(ANIME_FIND_DICT[chat_info.chat_id.value]) == 0:
@@ -249,8 +233,7 @@ async def add_anime_in_list(call):
     if len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value]) == 0:
         rand_word = RandomWords()
         message.text = rand_word.get_random_word()[0:3]
-        print(message.text)
-        ANIME_FIND_DICT[chat_info.chat_id.value] = return_find_anime(message)
+        ANIME_FIND_DICT[chat_info.chat_id.value] = await return_find_anime(message)
         FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value] = return_anime_dict(ANIME_FIND_DICT[chat_info.chat_id.value])
         return await get_find_list_anime(message, callback=call)
 
@@ -322,7 +305,7 @@ async def back_callback(call):
 #~~~~~~~~~~~~~~~~~~~~~ /start bot ~~~~~~~~~~~~~~~~~~~~~ ready
 
 async def start(message):
-    edit_text = "You wrote f*cking shit"
+    edit_text = "Create at me for me"
 
     chat_info = info_chat_create(message)
     keyboard = one_type_buttons_create(DEF_DICT, 3)

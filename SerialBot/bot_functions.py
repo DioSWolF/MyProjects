@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 
+import asyncio
 from copy import deepcopy
+from datetime import datetime
 import aiohttp
 import requests
 from bs4 import BeautifulSoup
@@ -17,6 +19,8 @@ from all_classes import EngTitleAnime, RusTitleAnime, PageAnime, ImageAnime, Ani
 from all_classes import IdChat, ChatIdMessage, IdChatUser, JsonChat, InfoChat
 # classes for create user info
 from all_classes import IdUser, IdUserChat, UserLogin, UserFistName, IsBot, UserLanguage, UserPremium, JsonUserInfo, InfoUser
+from fake_useragent import UserAgent
+
 
 # find anime function
 
@@ -24,12 +28,14 @@ def find_anime_animego(find_text: FindText, find_anime_list: FindAnimeList) -> N
 
     page_list = 1
     stop = []
-
+    session = requests.Session()
+    
     while stop == []:
-
+        headers = {"User-Agent": UserAgent().random}
+        
         find_link = f"{find_anime_link}{find_text}{find_anime_num_page}{page_list}"
 
-        with requests.get(find_link) as html_doc:
+        with session.get(find_link, headers=headers) as html_doc:
             soup = BeautifulSoup(html_doc.content, "lxml")
 
         stop = soup.select(".alert-warning")
@@ -58,32 +64,41 @@ def create_anime(find_anime_list: FindAnimeList, soup: BeautifulSoup) -> None:
     return 
 
 
-def download_image(image_dict: ImageAnimeDict, find_anime_dict: FindAnimeList) -> None:
+async def download_image(image_dict: ImageAnimeDict, find_anime_dict: FindAnimeList) -> None:
     
     image_dict.load_data()
     image_dict.save_data()
-
+    session = requests.Session()
+    
     for anime in find_anime_dict:
-
+        headers = {"User-Agent": UserAgent().random}
         if anime.image.page not in image_dict:
-
-            with requests.get(anime.image.page) as save_img:
-                out_img = open(f".\\image\\{anime.image.name}", "wb")
-                out_img.write(save_img.content)
-                out_img.close()     
-                image_dict.add_data(anime)
-                image_dict.save_data() 
+            try:
+                with session.get(anime.image.page, headers=headers) as save_img:
+                    out_img = open(f".\\image\\{anime.image.name}", "wb")
+                    out_img.write(save_img.content)
+                    out_img.close()     
+                    image_dict.add_data(anime)
+                    image_dict.save_data() 
+            except:
+                await asyncio.sleep(3)
+                with session.get(anime.image.page) as save_img:
+                    out_img = open(f".\\image\\{anime.image.name}", "wb")
+                    out_img.write(save_img.content)
+                    out_img.close()     
+                    image_dict.add_data(anime)
+                    image_dict.save_data() 
 
     return
 
 
-def return_find_anime(message: telebot.async_telebot.types.CallbackQuery) -> list[FindAnimeList, ImageAnimeDict]:
+async def return_find_anime(message: telebot.async_telebot.types.CallbackQuery) -> list[FindAnimeList, ImageAnimeDict]:
 
     find_text = FindText(message)
     find_anime_dict = FindAnimeList()
     image_dict = ImageAnimeDict()
     find_anime_animego(find_text.value, find_anime_dict)
-    download_image(image_dict, find_anime_dict)
+    await download_image(image_dict, find_anime_dict)
 
     return_anime_dict = deepcopy(find_anime_dict)
     find_anime_dict.clear()

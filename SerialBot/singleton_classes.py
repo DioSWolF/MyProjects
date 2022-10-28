@@ -59,6 +59,8 @@ class ImageAnimeDict(Singleton, UserDict, SaveData):
     def load_data(self) -> None:
         if os.path.exists(r".\\image") == False:
             os.mkdir(r".\\image")
+        if os.path.exists(r".\\save_bin_file") == False:
+            os.mkdir(r".\\save_bin_file")
         try:
 
             with open(".\\save_bin_file\\image_dict.bin", "rb") as file:
