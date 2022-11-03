@@ -208,13 +208,27 @@ class VoiceActingToday(AnimeTodayValue):
         self.__value = value.replace(")", "")
 
 
+class PageAnimeToday(AnimeTodayValue):
+
+    @property
+    def value(self) -> str:
+        return self.__value
+
+
+    @value.setter
+    def value(self, value) -> str: 
+
+        value = value.attrs["onclick"].replace("location.href=", "").replace("'", "")
+        self.__value = "https://animego.org" + value
+
+
 class AnimeToday:
 
-    def __init__(self, name, series_number, voice_acting) -> None:
+    def __init__(self, name, series_number, voice_acting, page) -> None:
         self.name: NameFindAnimeToday = name
         self.series_number: SeriesNumberToday = series_number
         self.voice_acting: VoiceActingToday = voice_acting
-        
+        self.page: PageAnimeToday = page
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ User info ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -334,7 +348,7 @@ class JsonUserInfo(ValueUser):
 
 
 class InfoUser:
-
+    list_message_delete = []
     def __init__(self, user_id, chat_id, user_login, user_name, is_bot, language_code, is_premium, json_info) -> None:
         self.user_id: IdUser = user_id
         self.chat_id: IdChat = chat_id
@@ -351,7 +365,7 @@ class InfoUser:
 class ValueChat(ABC):
 
     def __init__(self, value: telebot.async_telebot.types.CallbackQuery) -> None:
-        self.__value: str = ""
+        self.__value: list = []
         self.value: str = value
 
 
@@ -417,10 +431,10 @@ class JsonChat(ValueChat):
 
 class InfoChat:
 
-    def __init__(self, chat_id: IdChat, message_id: ChatIdMessage, user_id: IdChatUser, json_chat: JsonChat) -> None:
-        self.chat_id = chat_id
-        self.message_id = message_id
-        self.user_id = user_id
-        self.json_chat = json_chat
+    def __init__(self, chat_id, message_id, user_id, json_chat) -> None:
+        self.chat_id: IdChat = chat_id
+        self.message_id: ChatIdMessage = message_id
+        self.user_id: IdChatUser = user_id
+        self.json_chat: JsonChat = json_chat
         
 

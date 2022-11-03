@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 from telebot import asyncio_filters
 import telebot.async_telebot
 from random_word import RandomWords
 from bot_token import bot, bot_id
 import asyncio
 #~~~~~~~~~~~~~~~~~~~~~ create buttons ~~~~~~~~~~~~~~~~~~~~~
-from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, return_anime_dict, dump_num, create_image_text_message
+from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, return_anime_dict, dump_num, create_image_text_message, anime_today_buttons
 #~~~~~~~~~~~~~~~~~~~~~ bot functions ~~~~~~~~~~~~~~~~~~~~~
-from bot_functions import return_find_anime, add_new_anime_and_user, delete_anime_in_chat_id, info_chat_create, user_info_create, get_list_anime, get_user_bazedata, find_user_info
+from bot_functions import return_find_anime, add_new_anime_and_user, delete_anime_in_chat_id, info_chat_create, user_info_create, get_list_anime, get_user_bazedata, find_user_info, send_anime_today
 #~~~~~~~~~~~~~~~~~~~~~ state class ~~~~~~~~~~~~~~~~~~~~~
 from all_classes import MyStates 
-
 from push_while_true import find_new_anime_today
 
 
@@ -63,11 +63,9 @@ async def find_anime(call: telebot.async_telebot.types.CallbackQuery) -> None:
     global ANIME_FIND_DICT
     global DICT_NUM_FIND
     global FIND_ANIME_DICT_PAGINATION
-    
-    user_bazedata = get_user_bazedata()
 
     chat_info = info_chat_create(message)
-    user_id = user_bazedata[chat_info.chat_id.value].user_id.value
+    user_info = find_user_info(chat_info)
 
     ANIME_FIND_DICT[chat_info.chat_id.value] = []
     FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value] = []
@@ -80,8 +78,10 @@ async def find_anime(call: telebot.async_telebot.types.CallbackQuery) -> None:
 
     keyboard = one_type_buttons_create(FUNC_BACK_DICT, 2)
 
-    await bot.set_state(user_id, MyStates.find_text, message.chat.id)
-    await bot.edit_message_text(edit_text, chat_id=chat_info.chat_id.value, message_id=chat_info.message_id.value, reply_markup=keyboard)
+    await bot.set_state(user_info.user_id.value, MyStates.find_text, message.chat.id)
+    await asyncio.sleep(0.5)
+    
+    await bot.edit_message_text(edit_text, chat_id=user_info.chat_id.value, message_id=chat_info.message_id.value, reply_markup=keyboard)
 
     return 
 
@@ -105,6 +105,12 @@ async def get_find_list_anime(call, callback: telebot.async_telebot.types.Callba
 
     chat_info = info_chat_create(message)
 
+    try:
+        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:  
+            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
+    except:
+        pass
+
     if callback == None:
         callback = call
 
@@ -114,11 +120,16 @@ async def get_find_list_anime(call, callback: telebot.async_telebot.types.Callba
         DICT_NUM_FIND[chat_info.chat_id.value] = 0
 
     if len(ANIME_FIND_DICT[chat_info.chat_id.value]) == 0:
+
         ANIME_FIND_DICT[chat_info.chat_id.value] = await return_find_anime(message)
         FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value] = return_anime_dict(ANIME_FIND_DICT[chat_info.chat_id.value])
 
     if len(ANIME_FIND_DICT[chat_info.chat_id.value]) == 0:
-        return find_anime(callback)
+        rand_word = RandomWords()
+        message.text = rand_word.get_random_word()[0:3]
+        ANIME_FIND_DICT[chat_info.chat_id.value] = await return_find_anime(message)
+        FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value] = return_anime_dict(ANIME_FIND_DICT[chat_info.chat_id.value])
+        # return find_anime(callback)
 
     DICT_NUM_FIND[chat_info.chat_id.value] = dump_num(callback, FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value], DICT_NUM_FIND[chat_info.chat_id.value])
 
@@ -130,20 +141,13 @@ async def get_find_list_anime(call, callback: telebot.async_telebot.types.Callba
     if len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value]) > 1:
         navig_bt = {"Back page":"back_page|||find", "Next page":"next_page|||find"}
         keyboard = create_special_buttons(keyboard, navig_bt)
-   
-    try:
-        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
-            
-            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
-
-    except KeyError:
-        pass
 
     image_text_message = create_image_text_message(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]])
     
-    edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}"
+    edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}/{len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value])}"
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
+    await asyncio.sleep(0.5)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
 
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
@@ -165,6 +169,12 @@ async def change_buttons_add_new(call):
     
     chat_info = info_chat_create(message)
 
+    try:
+        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
+            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
+    except KeyError:
+        pass
+
     DICT_NUM_FIND[chat_info.chat_id.value] = dump_num(call, FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value], DICT_NUM_FIND[chat_info.chat_id.value])
 
     keyboard = anime_butoons_create(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]], callback="add_new")
@@ -181,16 +191,13 @@ async def change_buttons_add_new(call):
         anime_list.append(f"{anime.rus_title.value}\n{anime.eng_title.value}\n\n")
 
     edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\n{''.join(anime_list)}Click on button to add anime in your list\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}"
-    try:
-        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
-            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
-    except KeyError:
-        pass
+    
     image_text_message = create_image_text_message(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]])
     
-    edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}"
+    edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}/{len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value])}"
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
+    await asyncio.sleep(0.5)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
  
@@ -231,6 +238,11 @@ async def add_anime_in_list(call):
         DICT_NUM_FIND[chat_info.chat_id.value] = dump_num(call, FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value], DICT_NUM_FIND[chat_info.chat_id.value])
 
     if len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value]) == 0:
+        try:
+            for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
+                await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
+        except KeyError:
+            pass
         rand_word = RandomWords()
         message.text = rand_word.get_random_word()[0:3]
         ANIME_FIND_DICT[chat_info.chat_id.value] = await return_find_anime(message)
@@ -249,16 +261,19 @@ async def add_anime_in_list(call):
         anime_list.append(f"{anime.rus_title.value}\n{anime.eng_title.value}\n\n")
 
     edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\n{''.join(anime_list)}Click on button to add it in list\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}"
+    
     try:
         for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
             await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
     except KeyError:
         pass
+
     image_text_message = create_image_text_message(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value][DICT_NUM_FIND[chat_info.chat_id.value]])
     
-    edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}"
+    edit_text = f"We find {len(ANIME_FIND_DICT[chat_info.chat_id.value])} anime.\n\nClick on button to open website anime\nPage №{DICT_NUM_FIND[chat_info.chat_id.value] + 1}/{len(FIND_ANIME_DICT_PAGINATION[chat_info.chat_id.value])}"
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
+    await asyncio.sleep(0.5)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
 
@@ -305,7 +320,7 @@ async def back_callback(call):
 #~~~~~~~~~~~~~~~~~~~~~ /start bot ~~~~~~~~~~~~~~~~~~~~~ ready
 
 async def start(message):
-    edit_text = "Create at me for me"
+    edit_text = "Create by me to me"
 
     chat_info = info_chat_create(message)
     keyboard = one_type_buttons_create(DEF_DICT, 3)
@@ -315,7 +330,10 @@ async def start(message):
         MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(mes_id)
     except KeyError:
         MEDIA_MESSAGE_ID[chat_info.chat_id.value] = [mes_id]
-    await bot.delete_message(chat_info.chat_id.value, chat_info.message_id.value)
+    try:
+        await bot.delete_message(chat_info.chat_id.value, chat_info.message_id.value)
+    except:
+        pass
     return
 
 
@@ -349,6 +367,13 @@ async def start_show_list_anime(call):
             return 
     except TypeError:
         return   
+
+    try:
+        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
+            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
+    except KeyError:
+        pass
+
     if chat_info.chat_id.value not in DICT_NUM:
         DICT_NUM[chat_info.chat_id.value] = 0
 
@@ -371,17 +396,12 @@ async def start_show_list_anime(call):
         navig_bt = {"Back page":"back_page|||show", "Next page":"next_page|||show"}
         keyboard = create_special_buttons(keyboard, navig_bt)
 
-    edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to open website anime\n Page №{DICT_NUM[chat_info.chat_id.value] + 1}"
+    edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to open website anime\n Page №{DICT_NUM[chat_info.chat_id.value] + 1}/{len(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value])}"
     
-    try:
-        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
-            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
-    except KeyError:
-        pass
-
     image_text_message = create_image_text_message(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]])
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
+    await asyncio.sleep(0.5)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
 
@@ -399,6 +419,12 @@ async def change_buttons_delete(call):
     message = call.message
     chat_info = info_chat_create(message)
 
+    try:
+        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
+            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
+    except KeyError:
+        pass
+
     anime_list_in_chatid = get_list_anime()
     chat_anime = anime_list_in_chatid[chat_info.chat_id.value]["anime_list"]
 
@@ -414,15 +440,12 @@ async def change_buttons_delete(call):
         navig_bt = {"Back page":"back_page|||change_delete", "Next page":"next_page|||change_delete"}
         keyboard = create_special_buttons(keyboard, navig_bt)
 
-    edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to delete anime\nPage №{DICT_NUM[chat_info.chat_id.value] + 1}"
-    try:
-        for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
-            await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
-    except KeyError:
-        pass
+    edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to delete anime\nPage №{DICT_NUM[chat_info.chat_id.value] + 1}/{len(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value])}"
+
     image_text_message = create_image_text_message(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]])
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
+    await asyncio.sleep(0.5)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
  
@@ -477,7 +500,7 @@ async def delete_anime(call):
         navig_bt = {"Back page":"back_page|||delete", "Next page":"next_page|||delete"}
         keyboard = create_special_buttons(keyboard, navig_bt)
     
-    edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to delete anime\nPage №{DICT_NUM[chat_info.chat_id.value] + 1}"
+    edit_text = f"You have {len(chat_anime)} anime.\n\nClick on button to delete anime\nPage №{DICT_NUM[chat_info.chat_id.value] + 1}/ {len(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value])}"
     try:
         for mes_id in MEDIA_MESSAGE_ID[chat_info.chat_id.value]:
             await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=mes_id.message_id)
@@ -486,11 +509,82 @@ async def delete_anime(call):
     image_text_message = create_image_text_message(ANIME_SHOW_PAGIN_DICT[chat_info.chat_id.value][DICT_NUM[chat_info.chat_id.value]])
     
     MEDIA_MESSAGE_ID[chat_info.chat_id.value] = await bot.send_media_group(chat_id=chat_info.chat_id.value, media=image_text_message)
+    await asyncio.sleep(0.5)
     message_id = await bot.send_message(chat_id=chat_info.chat_id.value, text=edit_text, reply_markup=keyboard)
     MEDIA_MESSAGE_ID[chat_info.chat_id.value].append(message_id)
     
     return
 
+
+#~~~~~~~~~~~~~~~~~~~~~ send anime list today to user ~~~~~~~~~~~~~~~~~~~~~ 
+show_list = {}
+message_id_pagin = {}
+message_id_pagin_delete = {}
+
+async def send_anime_today_message(call):
+    global show_list
+    global message_id_pagin
+
+    message = call.message
+    chat_info = info_chat_create(message)
+    user_info = find_user_info(chat_info)
+
+    if call.data.split("|||")[0] == "find_new_series":
+        show_list[chat_info.chat_id.value] = 0 
+
+    anime_dict = await send_anime_today()
+
+    if len(anime_dict) <= 1:
+        return
+        
+    try:
+        await bot.delete_message(chat_id=chat_info.chat_id.value, message_id=message_id_pagin[chat_info.chat_id.value])
+        index =  message_id_pagin_delete[chat_info.chat_id.value].index(message_id_pagin[chat_info.chat_id.value])
+        message_id_pagin_delete[chat_info.chat_id.value].pop(index)
+    except KeyError:
+        pass
+
+    del anime_dict["time_date"]
+    
+    anime_list = []
+    for anime_today in anime_dict.values():
+        anime_list.append(anime_today)
+
+    anime_pagin = return_anime_dict(anime_list[::-1])
+
+    show_list[chat_info.chat_id.value] = dump_num(call, anime_pagin, show_list[chat_info.chat_id.value])
+    keyboard, message_text = anime_today_buttons(anime_pagin[show_list[chat_info.chat_id.value]])
+
+    if len(anime_pagin) > 1:
+        navig_bt = {"Back page":"back_page|||find_new_series", "Next page":"next_page|||find_new_series"}
+        keyboard = create_special_buttons(keyboard, navig_bt) 
+          
+    del_bt = {"Delete message" :"delete_all_push_mes"}
+    keyboard = create_special_buttons(keyboard, del_bt)   
+
+    edit_text = f"You have {len(anime_dict)} anime.\n\n{''.join(message_text)}Page №{show_list[chat_info.chat_id.value] + 1}/{len(anime_pagin)}"
+
+    message_id = await bot.send_message(user_info.user_id.value, edit_text, reply_markup=keyboard)
+
+    message_id_pagin[chat_info.chat_id.value] = message_id.message_id
+    if chat_info.chat_id.value not in message_id_pagin_delete:
+        message_id_pagin_delete[chat_info.chat_id.value] = [message_id.message_id]
+    else:
+        message_id_pagin_delete[chat_info.chat_id.value].append(message_id.message_id)
+
+    return 
+
+
+async def delete_all_push_mes(call):
+    global message_id_pagin_delete
+    message = call.message
+    chat_info = info_chat_create(message)
+    for mes_id in message_id_pagin_delete[chat_info.chat_id.value]:
+        await bot.delete_message(chat_info.chat_id.value, mes_id)
+        message_id_pagin_delete[chat_info.chat_id.value] = []
+        del message_id_pagin[chat_info.chat_id.value]
+  
+    return 
 
 #~~~~~~~~~~~~~~~~~~~~~ dicts for buttons ~~~~~~~~~~~~~~~~~~~~~ nees update
 
@@ -502,7 +596,8 @@ DICT_FUNC_WORK = {
                     "get_find_list_anime" : get_find_list_anime,
 
                     # # need add functions
-                    # "find_new_series" : "",
+                    "find_new_series" : send_anime_today_message,
+                    "delete_all_push_mes" : delete_all_push_mes,
                     # "selected_pushtime_" : "",
 
                     # add buttons  
@@ -534,14 +629,16 @@ DICT_FUNC_WORK = {
 
                     "back_page|||add" : add_anime_in_list,
                     "next_page|||add" : add_anime_in_list,
+                    "back_page|||find_new_series" : send_anime_today_message,
+                    "next_page|||find_new_series" : send_anime_today_message,
                 }
 
 
 DEF_DICT = {
             "Find anime" : "find_anime",                               # need to update
             "Show my anime list" : "show_all",                     # need to add
-            "Find new series(CRASHED)" : "find_new_series",                        # need to add
-            "Choice time to send push(CRASHED)" : "selected_pushtime_",                # need to add
+            "Show anime list with series today" : "find_new_series",                        # need to add
+            # "Choice time to send push(NOT WORCKED)" : "selected_pushtime_",                # need to add
             }
 
 
@@ -554,7 +651,7 @@ FUNC_BACK_DICT =    {
 
 
 async def main():
-    futures = [bot.polling(none_stop=True, interval=0), find_new_anime_today()]   # [while_true(), bot.polling(none_stop=True, interval=0)]
+    futures = [bot.polling(none_stop=True, interval=0), find_new_anime_today()]
     await asyncio.gather(*futures)
 
     

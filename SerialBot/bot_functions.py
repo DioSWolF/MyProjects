@@ -4,17 +4,16 @@
 
 import asyncio
 from copy import deepcopy
-from datetime import datetime
 import aiohttp
 import requests
 from bs4 import BeautifulSoup
 import telebot.async_telebot
-from bot_token import find_anime_link, find_anime_num_page, find_new_anime_link
-
+from bot_token import find_anime_link, find_anime_num_page
+from aiofile import async_open
 # save data classes
-from singleton_classes import ImageAnimeDict, AnimeToChatIdDict, ChatIdToAnimeDict, InfoUserDict
+from singleton_classes import AllAnimeFindToday, ImageAnimeDict, AnimeToChatIdDict, ChatIdToAnimeDict, InfoUserDict
 # classes for find function
-from all_classes import EngTitleAnime, RusTitleAnime, PageAnime, ImageAnime, Anime, FindAnimeList, FindText
+from all_classes import AnimeToday, EngTitleAnime, RusTitleAnime, PageAnime, ImageAnime, Anime, FindAnimeList, FindText
 # classes for add-delete functions
 from all_classes import IdChat, ChatIdMessage, IdChatUser, JsonChat, InfoChat
 # classes for create user info
@@ -24,30 +23,30 @@ from fake_useragent import UserAgent
 
 # find anime function
 
-def find_anime_animego(find_text: FindText, find_anime_list: FindAnimeList) -> None:
+async def find_anime_animego(find_text: FindText, find_anime_list: FindAnimeList) -> None:
 
     page_list = 1
     stop = []
-    session = requests.Session()
     
-    while stop == []:
-        headers = {"User-Agent": UserAgent().random}
-        
-        find_link = f"{find_anime_link}{find_text}{find_anime_num_page}{page_list}"
+    async with aiohttp.ClientSession() as session:
+        while stop == []:
 
-        with session.get(find_link, headers=headers) as html_doc:
-            soup = BeautifulSoup(html_doc.content, "lxml")
+            headers = {"User-Agent": UserAgent().random}
+            find_link = f"{find_anime_link}{find_text}{find_anime_num_page}{page_list}"
 
-        stop = soup.select(".alert-warning")
+            async with session.get(find_link, headers=headers) as resp: 
 
-        create_anime(find_anime_list, soup)
+                soup = BeautifulSoup(await resp.text(), "lxml")
 
-        page_list += 1
+            stop = soup.select(".alert-warning")
+            await create_anime(find_anime_list, soup)
+
+            page_list += 1
 
     return
 
 
-def create_anime(find_anime_list: FindAnimeList, soup: BeautifulSoup) -> None:
+async def create_anime(find_anime_list: FindAnimeList, soup: BeautifulSoup) -> None:
     counter = len(find_anime_list)
 
     for element in soup.select(".animes-grid-item"): 
@@ -68,26 +67,38 @@ async def download_image(image_dict: ImageAnimeDict, find_anime_dict: FindAnimeL
     
     image_dict.load_data()
     image_dict.save_data()
+
     session = requests.Session()
-    
+
     for anime in find_anime_dict:
         headers = {"User-Agent": UserAgent().random}
         if anime.image.page not in image_dict:
+           
             try:
                 with session.get(anime.image.page, headers=headers) as save_img:
-                    out_img = open(f".\\image\\{anime.image.name}", "wb")
-                    out_img.write(save_img.content)
-                    out_img.close()     
-                    image_dict.add_data(anime)
-                    image_dict.save_data() 
+                    async with async_open(f"./image_list/{anime.image.name}", "wb") as file:
+                        await file.write(save_img.content)
+                        image_dict.add_data(anime)
+                        image_dict.save_data()  
+                    # out_img = open(f"./image_list/{anime.image.name}", "wb")
+                    # out_img.write(save_img.content)
+                    # out_img.close()     
+                    # image_dict.add_data(anime)
+                    # image_dict.save_data() 
             except:
                 await asyncio.sleep(3)
-                with session.get(anime.image.page) as save_img:
-                    out_img = open(f".\\image\\{anime.image.name}", "wb")
-                    out_img.write(save_img.content)
-                    out_img.close()     
+                async with async_open(f"./image_list/{anime.image.name}", "wb") as file:
+                    await file.write(save_img.content)
                     image_dict.add_data(anime)
                     image_dict.save_data() 
+
+                # with session.get(anime.image.page) as save_img:
+                #     out_img =open(f"./image_list/{anime.image.name}", "wb")
+                #     out_img.write(save_img.content)
+                #     out_img.close()     
+                    # image_dict.add_data(anime)
+                    # image_dict.save_data() 
+    session.close()
 
     return
 
@@ -97,7 +108,7 @@ async def return_find_anime(message: telebot.async_telebot.types.CallbackQuery) 
     find_text = FindText(message)
     find_anime_dict = FindAnimeList()
     image_dict = ImageAnimeDict()
-    find_anime_animego(find_text.value, find_anime_dict)
+    await find_anime_animego(find_text.value, find_anime_dict)
     await download_image(image_dict, find_anime_dict)
 
     return_anime_dict = deepcopy(find_anime_dict)
@@ -190,14 +201,12 @@ def return_image_dict()-> list[ImageAnimeDict]:
     return image_dict
 
 
-
-
-
-async def find_new_seria():
-    async with aiohttp.ClientSession() as session:
-        async with session.get(find_new_anime_link) as resp:
-            print(resp.status)
-            print(await resp.text())
+# return dict anime tuday
+async def send_anime_today()-> dict[str : AnimeToday]:
+    anime_save = AllAnimeFindToday()
+    anime_save.load_data()
+    anime_save.clean_data()
+    return anime_save
 
 
 

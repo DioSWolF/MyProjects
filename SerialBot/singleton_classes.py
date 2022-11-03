@@ -52,27 +52,27 @@ class ImageAnimeDict(Singleton, UserDict, SaveData):
 
     def save_data(self) -> None:
 
-        with open(".\\save_bin_file\\image_dict.bin", "wb") as file:
+        with open("./save_bin_file/image_dict.bin", "wb") as file:
             pickle.dump(self.data, file)
 
 
     def load_data(self) -> None:
-        if os.path.exists(r".\\image") == False:
-            os.mkdir(r".\\image")
-        if os.path.exists(r".\\save_bin_file") == False:
-            os.mkdir(r".\\save_bin_file")
+        if os.path.exists(r"./image_list") == False:
+            os.mkdir(r"./image_list")
+        if os.path.exists(r"./save_bin_file") == False:
+            os.mkdir(r"./save_bin_file")
         try:
 
-            with open(".\\save_bin_file\\image_dict.bin", "rb") as file:
+            with open("./save_bin_file/image_dict.bin", "rb") as file:
                 self.data = pickle.load(file)
                 return self.data 
 
         except FileNotFoundError:
 
-            with open(".\\save_bin_file\\image_dict.bin", "wb") as file:
+            with open("./save_bin_file/image_dict.bin", "wb") as file:
                 pickle.dump(self.data , file)
 
-            with open(".\\save_bin_file\\image_dict.bin", "rb") as file:
+            with open("./save_bin_file/image_dict.bin", "rb") as file:
                 return self.data 
 
 
@@ -111,26 +111,26 @@ class AnimeToChatIdDict(Singleton, UserDict, SaveData):
 
     def save_data(self) -> None:
 
-        with open(".\\save_bin_file\\anime_chatid.bin", "wb") as file:
+        with open("./save_bin_file/anime_chatid.bin", "wb") as file:
             pickle.dump(self.data, file)
 
 
     def load_data(self) -> None:
-        if os.path.exists(r".\\save_bin_file") == False:
-            os.mkdir(r".\\save_bin_file")
+        if os.path.exists(r"./save_bin_file") == False:
+            os.mkdir(r"./save_bin_file")
         try:
 
-            with open(".\\save_bin_file\\anime_chatid.bin", "rb") as file:
+            with open("./save_bin_file/anime_chatid.bin", "rb") as file:
                 self.data = pickle.load(file)
 
                 return self.data 
 
         except FileNotFoundError:
 
-            with open(".\\save_bin_file\\anime_chatid.bin", "wb") as file:
+            with open("./save_bin_file/anime_chatid.bin", "wb") as file:
                 pickle.dump(self.data , file)
 
-            with open(".\\save_bin_file\\anime_chatid.bin", "rb") as file:
+            with open("./save_bin_file/anime_chatid.bin", "rb") as file:
                 return self.data 
 
 
@@ -167,26 +167,26 @@ class ChatIdToAnimeDict(Singleton, UserDict, SaveData):
 
     def save_data(self) -> None:
 
-        with open(".\\save_bin_file\\chatid_anime.bin", "wb") as file:
+        with open("./save_bin_file/chatid_anime.bin", "wb") as file:
             pickle.dump(self.data, file)
 
 
     def load_data(self) -> None:
-        if os.path.exists(r".\\save_bin_file") == False:
-            os.mkdir(r".\\save_bin_file")
+        if os.path.exists(r"./save_bin_file") == False:
+            os.mkdir(r"./save_bin_file")
         try:
 
-            with open(".\\save_bin_file\\chatid_anime.bin", "rb") as file:
+            with open("./save_bin_file/chatid_anime.bin", "rb") as file:
                 self.data = pickle.load(file)
 
                 return self.data 
 
         except FileNotFoundError:
 
-            with open(".\\save_bin_file\\chatid_anime.bin", "wb") as file:
+            with open("./save_bin_file/chatid_anime.bin", "wb") as file:
                 pickle.dump(self.data, file)
 
-            with open(".\\save_bin_file\\chatid_anime.bin", "rb") as file:
+            with open("./save_bin_file/chatid_anime.bin", "rb") as file:
                 return self.data 
 
 
@@ -205,26 +205,26 @@ class InfoUserDict(Singleton, UserDict, SaveData):
 
     def save_data(self) -> None:
 
-        with open(".\\save_bin_file\\info_users.bin", "wb") as file:
+        with open("./save_bin_file/info_users.bin", "wb") as file:
             pickle.dump(self.data, file)
 
 
     def load_data(self) -> None:
-        if os.path.exists(r".\\save_bin_file") == False:
-            os.mkdir(r".\\save_bin_file")
+        if os.path.exists(r"./save_bin_file") == False:
+            os.mkdir(r"./save_bin_file")
         try:
 
-            with open(".\\save_bin_file\\info_users.bin", "rb") as file:
+            with open("./save_bin_file/info_users.bin", "rb") as file:
                 self.data = pickle.load(file)
 
                 return self.data 
 
         except FileNotFoundError:
 
-            with open(".\\save_bin_file\\info_users.bin", "wb") as file:
+            with open("./save_bin_file/info_users.bin", "wb") as file:
                 pickle.dump(self.data , file)
 
-            with open(".\\save_bin_file\\info_users.bin", "rb") as file:
+            with open("./save_bin_file/info_users.bin", "rb") as file:
                 return self.data 
 
 
@@ -242,7 +242,6 @@ class AnimeFindToday(Singleton, UserDict, SaveData):
                     save_key = f"{anime_today.name.value}|{anime_today.series_number.value}|{anime_today.voice_acting.value}"
                     if save_key not in self.data:
                         self.data[save_key] = {"anime_today" : anime_today, "anime" : anime_item["anime_info"], "push_flag" : False}
-
         self.save_data()
 
 
@@ -260,10 +259,11 @@ class AnimeFindToday(Singleton, UserDict, SaveData):
     def clean_data(self):
 
         self.load_data()
-
-        if self.data["time_date"] != datetime.now().date():
-            self.data.clear()
-
+        try:
+            if self.data["time_date"] != datetime.now().date():
+                self.data.clear()
+        except KeyError: 
+            pass
         self.data["time_date"] = datetime.now().date()
 
         self.save_data()
@@ -271,23 +271,74 @@ class AnimeFindToday(Singleton, UserDict, SaveData):
 
     def save_data(self) -> None:
 
-        with open(".\\save_bin_file\\find_today.bin", "wb") as file:
+        with open("./save_bin_file/find_today.bin", "wb") as file:
             pickle.dump(self.data, file)
 
 
     def load_data(self) -> None:
-        if os.path.exists(r".\\save_bin_file") == False:
-            os.mkdir(r".\\save_bin_file")
+        if os.path.exists(r"./save_bin_file") == False:
+            os.mkdir(r"./save_bin_file")
         try:
-            with open(".\\save_bin_file\\find_today.bin", "rb") as file:
+            with open("./save_bin_file/find_today.bin", "rb") as file:
                 self.data = pickle.load(file)
                 return self.data 
 
         except FileNotFoundError:
-            with open(".\\save_bin_file\\find_today.bin", "wb") as file:
+            with open("./save_bin_file/find_today.bin", "wb") as file:
                 pickle.dump(self.data , file)
 
-            with open(".\\save_bin_file\\find_today.bin", "rb") as file:
+            with open("./save_bin_file/find_today.bin", "rb") as file:
                 return self.data 
 
 
+class AllAnimeFindToday(Singleton, UserDict, SaveData):
+
+    async def add_data(self, anime_today_list: list[AnimeToday], anime: dict[Anime]) -> None:
+        
+        self.load_data()
+
+        self.data["time_date"] = datetime.now().date()
+
+        for anime_today in anime_today_list:
+                save_key = f"{anime_today.name.value}|{anime_today.series_number.value}|{anime_today.voice_acting.value}"
+
+                if save_key not in self.data:
+                    self.data[save_key] = anime_today
+        self.save_data()
+
+
+    def clean_data(self):
+
+        self.load_data()
+
+        try:
+            if self.data["time_date"] != datetime.now().date():
+                self.data.clear()
+        except KeyError: 
+            pass
+        
+        self.data["time_date"] = datetime.now().date()
+
+        self.save_data()
+
+
+    def save_data(self) -> None:
+
+        with open("./save_bin_file/find_today_all.bin", "wb") as file:
+            pickle.dump(self.data, file)
+
+
+    def load_data(self) -> None:
+        if os.path.exists(r"./save_bin_file") == False:
+            os.mkdir(r"./save_bin_file")
+        try:
+            with open("./save_bin_file/find_today_all.bin", "rb") as file:
+                self.data = pickle.load(file)
+                return self.data 
+
+        except FileNotFoundError:
+            with open("./save_bin_file/find_today_all.bin", "wb") as file:
+                pickle.dump(self.data , file)
+
+            with open("./save_bin_file/find_today_all.bin", "rb") as file:
+                return self.data 

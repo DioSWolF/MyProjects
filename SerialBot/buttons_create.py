@@ -1,8 +1,28 @@
 
 from telebot.async_telebot import types
-from all_classes import Anime
+from all_classes import Anime, AnimeToday
 from PIL import Image
 from singleton_classes import ImageAnimeDict
+
+
+def anime_today_buttons(anime_dict: dict[AnimeToday]) -> types.InlineKeyboardMarkup | list[str]:
+    keyboard = types.InlineKeyboardMarkup()
+    buttons = {}
+    bt_list = []
+    message_text = []
+    
+    for anime_today in anime_dict:
+  
+        message_text.append(f"{anime_today.name.value}\n"\
+            f"Series {anime_today.series_number.value}, voice acting: {anime_today.voice_acting.value}\n\n")
+
+        if anime_today.name.value not in buttons:
+            buttons[anime_today.name.value] = types.InlineKeyboardButton(text=anime_today.name.value, url=anime_today.page.value)
+    for bt in buttons.values():
+        bt_list.append(bt)
+    keyboard.add(*bt_list)
+
+    return keyboard, message_text
 
 
 def one_type_buttons_create(dict_functions: dict, byttons_in_row:int, keybord_row: int = 3, callback: str = None):
@@ -122,6 +142,10 @@ def create_image_text_message(anime_list):
     for anime in anime_list:
         for image_page, image in image_dict.items():
             if anime.image.page == image_page:
-                image_and_text = types.InputMediaPhoto(Image.open(f".\image\{image.name}"), caption=f"{anime.rus_title.value}\n{anime.eng_title.value}")
+                image_and_text = types.InputMediaPhoto(Image.open(f"./image_list/{image.name}"), caption=f"{anime.rus_title.value}\n{anime.eng_title.value}")
                 new_list.append(image_and_text)
     return new_list
+
+
+
+
