@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
+from fake_useragent import UserAgent
 import asyncio
 from copy import deepcopy
 import aiohttp
 import requests
 from bs4 import BeautifulSoup
 import telebot.async_telebot
-from bot_token import find_anime_link, find_anime_num_page
+from bot_token import find_anime_link, find_anime_num_page, save_image_folder
 from aiofile import async_open
 # save data classes
 from singleton_classes import AllAnimeFindToday, ImageAnimeDict, AnimeToChatIdDict, ChatIdToAnimeDict, InfoUserDict
@@ -18,7 +18,7 @@ from all_classes import AnimeToday, EngTitleAnime, RusTitleAnime, PageAnime, Ima
 from all_classes import IdChat, ChatIdMessage, IdChatUser, JsonChat, InfoChat
 # classes for create user info
 from all_classes import IdUser, IdUserChat, UserLogin, UserFistName, IsBot, UserLanguage, UserPremium, JsonUserInfo, InfoUser
-from fake_useragent import UserAgent
+
 
 
 # find anime function
@@ -76,7 +76,7 @@ async def download_image(image_dict: ImageAnimeDict, find_anime_dict: FindAnimeL
            
             try:
                 with session.get(anime.image.page, headers=headers) as save_img:
-                    async with async_open(f"./image_list/{anime.image.name}", "wb") as file:
+                    async with async_open(f"{save_image_folder}{anime.image.name}", "wb") as file:
                         await file.write(save_img.content)
                         image_dict.add_data(anime)
                         image_dict.save_data()  
@@ -87,7 +87,7 @@ async def download_image(image_dict: ImageAnimeDict, find_anime_dict: FindAnimeL
                     # image_dict.save_data() 
             except:
                 await asyncio.sleep(3)
-                async with async_open(f"./image_list/{anime.image.name}", "wb") as file:
+                async with async_open(f"{save_image_folder}{anime.image.name}", "wb") as file:
                     await file.write(save_img.content)
                     image_dict.add_data(anime)
                     image_dict.save_data() 

@@ -16,30 +16,24 @@ from fake_useragent import UserAgent
 async def find_new_anime_today() -> None:
 
     async with aiohttp.ClientSession() as session:
-        while True:
 
+        while True:
             await asyncio.sleep(randrange(150, 250))
-            # session = aiohttp.ClientSession()
 
             headers = {"User-Agent" : UserAgent().random}
-            # try:
-            async with session.get(find_new_anime_link, headers=headers) as resp: 
-                soup = BeautifulSoup(await resp.text(), "lxml")
-                soup = soup.select_one("#slide-toggle-1")
+            try:
 
-            # except:
-            #     await asyncio.sleep(randrange(5, 10))
-            #     # session = aiohttp.ClientSession()
+                async with session.get(find_new_anime_link, headers=headers) as resp: 
+                    soup = BeautifulSoup(await resp.text(), "lxml")
 
-            #     async with session.get(find_new_anime_link, headers=headers) as resp: 
-            #         soup = BeautifulSoup(await resp.text(), "lxml")
-            #         soup = soup.select_one("#slide-toggle-1")
+                    if resp.status == 200:
+                        soup = soup.select_one("#slide-toggle-1")
+                        await create_new_anime_today(soup)
+                        user_push_dict = await create_message_text_dict()
+                        await send_push_message(user_push_dict)
 
-            await create_new_anime_today(soup)
-            user_push_dict = await create_message_text_dict()
-            await send_push_message(user_push_dict)
-            
-            # await session.close()
+            except aiohttp.ClientConnectionError:
+                pass
 
 
 async def create_new_anime_today(anime_today_list: BeautifulSoup) -> None:
@@ -116,21 +110,6 @@ async def send_push_message(user_push_dict:dict[int : str]) -> None:
         keyboard.add(*by_list)
 
         await bot.send_message(user_id, "".join(message_text["anime"]), reply_markup=keyboard)
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
         return 
 
-async def send_anime_today():
-    anime_save = AnimeFindToday()
-    anime = ChatIdToAnimeDict()
-    anime_save.load_data()
-    anime.load_data()
-
-
-
-
-# async def start_push_while():
-#     futures = [bot.polling(none_stop=True, interval=0), find_new_anime_today()]
-#     await asyncio.gather(*futures)
-
-# if __name__ == '__main__':  
-#     asyncio.run(find_new_anime_today())

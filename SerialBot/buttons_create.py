@@ -1,9 +1,14 @@
+from PIL import Image
 
 from telebot.async_telebot import types
 from all_classes import Anime, AnimeToday
-from PIL import Image
 from singleton_classes import ImageAnimeDict
+from bot_token import save_image_folder
 
+def contact_with_me(keyboard):
+    key_contact = types.InlineKeyboardButton(text="Contact the developer (for any ideas, bug reports or just to say thank you)", url="https://t.me/DioS_WolF")
+    keyboard.add(key_contact)
+    return keyboard
 
 def anime_today_buttons(anime_dict: dict[AnimeToday]) -> types.InlineKeyboardMarkup | list[str]:
     keyboard = types.InlineKeyboardMarkup()
@@ -142,7 +147,7 @@ def create_image_text_message(anime_list):
     for anime in anime_list:
         for image_page, image in image_dict.items():
             if anime.image.page == image_page:
-                image_and_text = types.InputMediaPhoto(Image.open(f"./image_list/{image.name}"), caption=f"{anime.rus_title.value}\n{anime.eng_title.value}")
+                image_and_text = types.InputMediaPhoto(Image.open(f"{save_image_folder}{image.name}"), caption=f"{anime.rus_title.value}\n{anime.eng_title.value}")
                 new_list.append(image_and_text)
     return new_list
 
