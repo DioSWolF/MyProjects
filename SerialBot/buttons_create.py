@@ -1,28 +1,30 @@
 from PIL import Image
 
 from telebot.async_telebot import types
-from all_classes import Anime, AnimeToday
-from singleton_classes import ImageAnimeDict
-from bot_token import save_image_folder
+from bot_token import contact_me
+from mymodels import AnimeDB, AnimeTodayDB
 
-def contact_with_me(keyboard):
-    key_contact = types.InlineKeyboardButton(text="Contact the developer (for any ideas, bug reports or just to say thank you)", url="https://t.me/DioS_WolF")
+
+def contact_with_me(keyboard: types.InlineKeyboardMarkup) -> types.InlineKeyboardMarkup:
+    key_contact = types.InlineKeyboardButton(text="Contact the developer (for any ideas, bug reports or just to say thank you)", url=f"https://t.me/{contact_me}")
     keyboard.add(key_contact)
     return keyboard
 
-def anime_today_buttons(anime_dict: dict[AnimeToday]) -> types.InlineKeyboardMarkup | list[str]:
+
+def anime_today_buttons(anime_dict: dict[AnimeTodayDB]) -> types.InlineKeyboardMarkup | list[str]:
     keyboard = types.InlineKeyboardMarkup()
     buttons = {}
     bt_list = []
     message_text = []
     
     for anime_today in anime_dict:
-  
-        message_text.append(f"{anime_today.name.value}\n"\
-            f"Series {anime_today.series_number.value}, voice acting: {anime_today.voice_acting.value}\n\n")
+        
+        message_text.append(f"{anime_today.eng_name} | {anime_today.rus_name}\n"\
+            f"Series {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n\n")
 
-        if anime_today.name.value not in buttons:
-            buttons[anime_today.name.value] = types.InlineKeyboardButton(text=anime_today.name.value, url=anime_today.page.value)
+        if anime_today.eng_name not in buttons:
+            buttons[anime_today.eng_name] = types.InlineKeyboardButton(text=f"{anime_today.eng_name} | {anime_today.rus_name}", url=anime_today.anime_page)
+
     for bt in buttons.values():
         bt_list.append(bt)
     keyboard.add(*bt_list)
@@ -30,7 +32,7 @@ def anime_today_buttons(anime_dict: dict[AnimeToday]) -> types.InlineKeyboardMar
     return keyboard, message_text
 
 
-def one_type_buttons_create(dict_functions: dict, byttons_in_row:int, keybord_row: int = 3, callback: str = None):
+def one_type_buttons_create(dict_functions: dict, byttons_in_row:int, keybord_row: int = 3, callback: str = None) -> types.InlineKeyboardMarkup:
 
     keyboard = types.InlineKeyboardMarkup()
     keyboard.row_width = keybord_row
@@ -56,22 +58,25 @@ def one_type_buttons_create(dict_functions: dict, byttons_in_row:int, keybord_ro
     return keyboard
 
 
-def anime_butoons_create(list_objects: list[Anime], callback: str = None, buttons_in_row: int = 3, url: str = None):
+def anime_butoons_create(list_objects: list[AnimeDB], callback: str = None, buttons_in_row: int = 3, url: str = None) -> types.InlineKeyboardMarkup:
     
     keyboard = types.InlineKeyboardMarkup()
+
     if list_objects == None:
         return keyboard
+
     keyboard.row_width = buttons_in_row
     keys_list = []
     i = 0
+    
     for objects in list_objects:  
-        bt_text = f"{objects.rus_title.value} | {objects.eng_title.value}"
+        bt_text = f"{objects.rus_title} | {objects.eng_title}"
 
         if url == None:
             key_menu = types.InlineKeyboardButton(text=bt_text, callback_data=f"{callback}#{str(i)}")
 
         else:
-            url_anime = objects.page.value
+            url_anime = objects.anime_page
             key_menu = types.InlineKeyboardButton(text=bt_text, url=url_anime)
         
         keys_list.append(key_menu)
@@ -141,14 +146,12 @@ def dump_num(call: types.CallbackQuery, anime_pagin_dict: dict|list, dict_num: i
     return dict_num
 
 
-def create_image_text_message(anime_list):
+def create_image_text_message(anime_list: list[AnimeDB]):
     new_list = []
-    image_dict = ImageAnimeDict().load_data()
     for anime in anime_list:
-        for image_page, image in image_dict.items():
-            if anime.image.page == image_page:
-                image_and_text = types.InputMediaPhoto(Image.open(f"{save_image_folder}{image.name}"), caption=f"{anime.rus_title.value}\n{anime.eng_title.value}")
-                new_list.append(image_and_text)
+        image_and_text = types.InputMediaPhoto(Image.open(f"{anime.image_path}{anime.image_name}"), caption=f"{anime.rus_title}\n{anime.eng_title}")
+        new_list.append(image_and_text)
+   
     return new_list
 
 

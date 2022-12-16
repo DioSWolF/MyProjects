@@ -4,10 +4,13 @@
 
 from collections import UserList
 from abc import ABC, abstractclassmethod
+from datetime import datetime, timedelta
 import telebot.async_telebot
 from bs4 import BeautifulSoup
 import uuid
 from telebot.asyncio_handler_backends import State, StatesGroup
+
+from search_dicts import SEAR_TAGS_DICT
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ state classes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -20,7 +23,7 @@ class MyStates(StatesGroup):
 
 class ValueAnime(ABC):
 
-    def __init__(self, value: BeautifulSoup|telebot.async_telebot.types.CallbackQuery = None) -> None:
+    def __init__(self, value: BeautifulSoup|telebot.async_telebot.types.CallbackQuery) -> None:
         self.__value: str = ""
         self.value: str = value
 
@@ -85,18 +88,6 @@ class PageAnime(ValueAnime):
         self.__value = value.select_one(".h5").select_one("a").get("href")
 
 
-class SeriesNum(ValueAnime): # need to update
-
-    @property
-    def value(self) -> str:
-        return self.__value
-
-
-    @value.setter
-    def value(self, value) -> str: 
-        self.__value = int(value) # need to update
-
-
 class ImageAnime():
 
     def __init__(self, image_name: BeautifulSoup) -> None:
@@ -136,10 +127,7 @@ class Anime:
         self.rus_title: RusTitleAnime = rus_title
         self.page: PageAnime = page
         self.image: ImageAnime = image
-        self.series_num: SeriesNum = series_num
-        self.counter: None | int = counter
-
-
+        
 
 class FindAnimeList(UserList):
 
@@ -150,8 +138,9 @@ class FindAnimeList(UserList):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Anime today ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class AnimeTodayValue(ABC):
-    def __init__(self, value) -> None:
+    def __init__(self, value, search_site = None) -> None:
         super().__init__()
+        self.search_site = search_site
         self.__value: str = ""
         self.value: str = value
 
@@ -177,7 +166,20 @@ class NameFindAnimeToday(AnimeTodayValue):
 
     @value.setter
     def value(self, value) -> str: 
-        self.__value = value.select_one(".last-update-title, font-weight-600").text
+        search_tag = SEAR_TAGS_DICT[self.search_site]["NameFindAnimeToday"]
+        self.__value = value.select_one(search_tag).text
+
+
+class EngNameAnimeToday(AnimeTodayValue):
+    @property
+    def value(self) -> str:
+        return self.__value
+
+
+    @value.setter
+    def value(self, value) -> str: 
+        value = value.select_one(".list-unstyled").find("li").text
+        self.__value = value
 
 
 class SeriesNumberToday(AnimeTodayValue): 
@@ -205,7 +207,10 @@ class VoiceActingToday(AnimeTodayValue):
     def value(self, value) -> str: 
         value = value.select_one(".ml-3").text
         value = value.split("(")[1]
-        self.__value = value.replace(")", "")
+        value = value.replace(")", "")
+        if value == "Субтитры":
+            value = f"Subtitle|{value}"
+        self.__value = value
 
 
 class PageAnimeToday(AnimeTodayValue):
@@ -224,11 +229,16 @@ class PageAnimeToday(AnimeTodayValue):
 
 class AnimeToday:
 
-    def __init__(self, name, series_number, voice_acting, page) -> None:
+    def __init__(self, name, eng_name, series_number, voice_acting, page, search_key) -> None:
         self.name: NameFindAnimeToday = name
+        self.eng_name: EngNameAnimeToday = eng_name
         self.series_number: SeriesNumberToday = series_number
         self.voice_acting: VoiceActingToday = voice_acting
         self.page: PageAnimeToday = page
+        self.search_key: str = search_key
+        self.anime_id: str = f"{self.eng_name.value}|{self.series_number.value}|{self.voice_acting.value}|{self.search_key}"
+        self.date_now: datetime = (datetime.now() + timedelta(hours=2)).date()
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ User info ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -335,106 +345,14 @@ class UserPremium(ValueUser):
         self.__value = value.from_user.is_premium
 
 
-class JsonUserInfo(ValueUser):
-    
-    @property 
-    def value(self) -> str:
-        return self.__value
-
-
-    @value.setter
-    def value(self, value) -> str: 
-        self.__value = value.json
-
-
 class InfoUser:
-    list_message_delete = []
-    def __init__(self, user_id, chat_id, user_login, user_name, is_bot, language_code, is_premium, json_info) -> None:
+
+    def __init__(self, user_id, chat_id, user_login, user_name, is_bot, language_code, is_premium) -> None:
         self.user_id: IdUser = user_id
-        self.chat_id: IdChat = chat_id
+        self.chat_id: IdUserChat = chat_id
         self.user_login: UserLogin = user_login
         self.user_name: UserFistName = user_name
         self.is_bot: IsBot = is_bot
         self.language_code: UserLanguage = language_code
         self.is_premium: UserPremium = is_premium
-        self.json_info: JsonUserInfo = json_info
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ chat id classes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-class ValueChat(ABC):
-
-    def __init__(self, value: telebot.async_telebot.types.CallbackQuery) -> None:
-        self.__value: list = []
-        self.value: str = value
-
-
-    @property 
-    @abstractclassmethod
-    def value(self) -> str:
-        pass
-
-
-    @value.setter
-    @abstractclassmethod
-    def value(self, value) -> str: 
-        pass
-
-
-class IdChat(ValueChat):
-
-    @property 
-    def value(self) -> str:
-        return self.__value
-
-
-    @value.setter
-    def value(self, value) -> str: 
-        self.__value = value.chat.id
-
-
-class IdChatUser(ValueChat):
-
-    @property 
-    def value(self) -> str:
-        return self.__value
-
-
-    @value.setter
-    def value(self, value) -> str: 
-        self.__value = value.from_user.id
-
-
-class ChatIdMessage(ValueChat):
-
-    @property 
-    def value(self) -> str:
-        return self.__value
-
-
-    @value.setter
-    def value(self, value: telebot.async_telebot.types.CallbackQuery) -> str: 
-        self.__value = value.message_id
-
-
-class JsonChat(ValueChat):
-
-    @property 
-    def value(self) -> str:
-        return self.__value
-
-
-    @value.setter
-    def value(self, value: telebot.async_telebot.types.CallbackQuery) -> str: 
-        self.__value = value.json
-
-
-class InfoChat:
-
-    def __init__(self, chat_id, message_id, user_id, json_chat) -> None:
-        self.chat_id: IdChat = chat_id
-        self.message_id: ChatIdMessage = message_id
-        self.user_id: IdChatUser = user_id
-        self.json_chat: JsonChat = json_chat
-        
 
