@@ -91,22 +91,3 @@ class FindAnimeBD(Base):
 # Base.metadata.bind = engine
 # session_db.commit()
 
-
-# a = UserInfoDB(user_id=111111, chat_id=222222, user_login="dios", user_name="wolf", is_bot=False, language_code="ua")
-# session_db.add(a)
-# b = AnimeDB(eng_title="dios", rus_title="wolf", anime_page="qqqqq", image_name="wwwww", image_page="eeeeee", image_path="qweeeeeeeeee")
-# session_db.add(b)
-# session_db.commit()
-# c = UserToAnimeDB(user_id=111111, anime_id=1)
-# session_db.add(c)
-
-
-# from sqlalchemy.orm import joinedload
-
-# a = session_db.query(UserInfoDB).options(joinedload("find_anime_t")).filter_by(user_id=635261244).all()
-
-# for i in a:
-#     for c in i.find_anime_t:
-#         print(c.anime_id)
-
-# session_db.commit()
