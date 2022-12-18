@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 from telebot.types import CallbackQuery
 from telebot import asyncio_filters
 from bot_token import bot
 import asyncio
 #~~~~~~~~~~~~~~~~~~~~~ create buttons ~~~~~~~~~~~~~~~~~~~~~
-from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, dump_num, create_image_text_message, anime_today_buttons, contact_with_me
+from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, create_image_text_message, anime_today_buttons, contact_with_me
 
 #~~~~~~~~~~~~~~~~~~~~~ state class ~~~~~~~~~~~~~~~~~~~~~
 from push_while_true import find_new_anime_today
@@ -53,6 +54,8 @@ async def start(message: CallbackQuery) -> None:
 
     if user_query.user_info == None:
         user_query.add_new_user()
+        user_info = user_query.get_user()
+
 #!
     edit_text = f"\nIrasshaimase, {user_info.user_name}-san!"
 
@@ -153,7 +156,7 @@ async def get_find_list_anime(call: CallbackQuery, callback: CallbackQuery = Non
         callback = call
 
     if call_data == "":
-        await query_anime.find_anime(message, user_info)
+        await query_anime.find_anime(message, user_info, "animego")
         anime_list = pagin_anime.get_anime_list(user_info)
 
         while len(anime_list) == 0:
@@ -302,15 +305,14 @@ async def start_show_list_anime(call: CallbackQuery) -> None:
     message = call.message
 
     user_query = QueryUserInfo(message)
-    user_info = user_query.get_user()
+    message_delete = MessageDeleteId()
     show_user_anime_query = ShowUserList()
 
+    user_info = user_query.get_user()
     show_user_anime_query.add_pagin_num(user_info)
     anime_list = show_user_anime_query.get_anime_list(user_info)
 
-    message_delete = MessageDeleteId()
-
-    if len(anime_list) == 0 or len(anime_pagin_dict) == 0:
+    if len(anime_list) == 0:
         return
     
     await message_delete.delete_message_list(user_info)
@@ -410,7 +412,7 @@ async def delete_anime(call: CallbackQuery) -> None:
         pass
         
     anime_pagin_dict = show_user_anime_query.get_pagin_anime_dict(user_info)
-
+    anime_list = show_user_anime_query.get_anime_list(user_info)
     if dump_num >= len(anime_pagin_dict):
         dump_num = show_user_anime_query.dump_num(call, user_info, anime_pagin_dict)
 

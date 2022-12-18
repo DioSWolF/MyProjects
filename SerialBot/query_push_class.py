@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 from datetime import datetime, timedelta
 from parse_classes import AnimeToday
 from mymodels import AnimeDB, AnimeTodayDB, PushUserDB, UserInfoDB, session_db
@@ -8,7 +12,7 @@ from telebot.async_telebot import types
 
 
 class QueryAnimeToday():
-    anime_today_db: AnimeTodayDB = AnimeTodayDB
+    anime_today_db = AnimeTodayDB
     
     date_now: datetime = (datetime.now() + timedelta(hours=2)).date()
     session = session_db
@@ -133,7 +137,6 @@ class PushAnimeToday():
                 
                 if self.user_list != None:
                     for user_info in self.user_list:
-                        print(anime.rus_name, user_info.user_id)
                         new_record = self.push_user_model(user_id=user_info.user_id, )
                         new_record = self.push_user_model(user_id=user_info.user_id, anime_id=anime.anime_id,\
                                                                 update_date=self.date_now, anime_page=anime.anime_page, message_text=self.push_text)

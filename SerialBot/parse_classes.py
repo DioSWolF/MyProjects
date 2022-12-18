@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 
-from collections import UserList
 from abc import ABC, abstractclassmethod
 from datetime import datetime, timedelta
 import telebot.async_telebot
@@ -10,7 +9,7 @@ from bs4 import BeautifulSoup
 import uuid
 from telebot.asyncio_handler_backends import State, StatesGroup
 
-from search_dicts import SEAR_TAGS_DICT
+from search_dicts import SEARCH_SITE_DICT
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ state classes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -23,7 +22,9 @@ class MyStates(StatesGroup):
 
 class ValueAnime(ABC):
 
-    def __init__(self, value: BeautifulSoup|telebot.async_telebot.types.CallbackQuery) -> None:
+    def __init__(self, value: BeautifulSoup|telebot.async_telebot.types.CallbackQuery, search_key: str = None) -> None:
+        self.search_key = search_key
+        self.search_site_model = SEARCH_SITE_DICT[self.search_key]
         self.__value: str = ""
         self.value: str = value
 
@@ -40,8 +41,11 @@ class ValueAnime(ABC):
         pass
 
 
-class FindText(ValueAnime):
-    
+class FindText():
+    def __init__(self, value) -> None:
+        self.__value: str = ""
+        self.value: str = value
+
     @property
     def value(self) -> str:
         return self.__value
@@ -61,8 +65,9 @@ class EngTitleAnime(ValueAnime):
 
     @value.setter
     def value(self, value) -> str: 
-        self.__value = value.select_one(".text-gray-dark-6").text
-
+        if self.search_key == "animego":
+            value = value.select_one(".text-gray-dark-6").text
+        self.__value = value
 
 class RusTitleAnime(ValueAnime):
 
@@ -73,8 +78,9 @@ class RusTitleAnime(ValueAnime):
 
     @value.setter
     def value(self, value) -> str:
-        self.__value = value.select_one(".h5").select_one("a").get("title")
-
+        if self.search_key == "animego":
+            value = value.select_one(".h5").select_one("a").get("title")
+        self.__value = value
 
 class PageAnime(ValueAnime):
 
@@ -85,12 +91,14 @@ class PageAnime(ValueAnime):
 
     @value.setter
     def value(self, value) -> str: 
-        self.__value = value.select_one(".h5").select_one("a").get("href")
-
+        if self.search_key == "animego":
+            value = value.select_one(".h5").select_one("a").get("href")
+        self.__value = value
 
 class ImageAnime():
 
-    def __init__(self, image_name: BeautifulSoup) -> None:
+    def __init__(self, image_name: BeautifulSoup, search_key: str) -> None:
+        self.search_key = search_key
         self.__name: str = ""
         self.name: str = image_name
         self.__page: str = ""
@@ -115,32 +123,28 @@ class ImageAnime():
 
     @page.setter
     def page(self, page) -> str: 
-        page = page.select_one(".anime-grid-lazy").get("data-original")
+        if self.search_key == "animego":
+            page = page.select_one(".anime-grid-lazy").get("data-original")
         self.__page = page
 
 
 class Anime:
     new_today = False
 
-    def __init__(self, eng_title, rus_title, page, image, series_num = 0, counter = None,) -> None:
+    def __init__(self, eng_title, rus_title, page, image) -> None:
         self.eng_title: EngTitleAnime = eng_title
         self.rus_title: RusTitleAnime = rus_title
         self.page: PageAnime = page
         self.image: ImageAnime = image
         
 
-class FindAnimeList(UserList):
-
-    def add_data(self, anime: Anime) -> None:
-        self.data.append(anime)
-
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Anime today ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class AnimeTodayValue(ABC):
-    def __init__(self, value, search_site = None) -> None:
+    def __init__(self, value, search_key = None) -> None:
         super().__init__()
-        self.search_site = search_site
+        self.search_key = search_key
+        self.search_site_model = SEARCH_SITE_DICT[self.search_key]
         self.__value: str = ""
         self.value: str = value
 
@@ -166,9 +170,9 @@ class NameFindAnimeToday(AnimeTodayValue):
 
     @value.setter
     def value(self, value) -> str: 
-        search_tag = SEAR_TAGS_DICT[self.search_site]["NameFindAnimeToday"]
-        self.__value = value.select_one(search_tag).text
-
+        if self.search_key == "animego":
+            value = value.select_one(".last-update-title, font-weight-600").text
+        self.__value = value
 
 class EngNameAnimeToday(AnimeTodayValue):
     @property
@@ -178,7 +182,10 @@ class EngNameAnimeToday(AnimeTodayValue):
 
     @value.setter
     def value(self, value) -> str: 
-        value = value.select_one(".list-unstyled").find("li").text
+
+        if self.search_key == "animego":
+            value = value.select_one(".list-unstyled").find("li").text
+
         self.__value = value
 
 
@@ -191,9 +198,11 @@ class SeriesNumberToday(AnimeTodayValue):
 
     @value.setter
     def value(self, value) -> str: 
-        value = value.select_one(".ml-3").text
-        value = value.split("(")[0]
-        self.__value = value.split()[0]
+        if self.search_key == "animego":
+            value = value.select_one(".ml-3").text
+            value = value.split("(")[0]
+            value = value.split()[0]
+        self.__value = value
 
 
 class VoiceActingToday(AnimeTodayValue): 
@@ -205,11 +214,14 @@ class VoiceActingToday(AnimeTodayValue):
 
     @value.setter
     def value(self, value) -> str: 
-        value = value.select_one(".ml-3").text
-        value = value.split("(")[1]
-        value = value.replace(")", "")
-        if value == "Субтитры":
-            value = f"Subtitle|{value}"
+
+        if self.search_key == "animego":
+            value = value.select_one(".ml-3").text
+            value = value.split("(")[1]
+            value = value.replace(")", "")
+            if value == "Субтитры":
+                value = f"Subtitle|{value}"
+
         self.__value = value
 
 
@@ -223,8 +235,13 @@ class PageAnimeToday(AnimeTodayValue):
     @value.setter
     def value(self, value) -> str: 
 
-        value = value.attrs["onclick"].replace("location.href=", "").replace("'", "")
-        self.__value = "https://animego.org" + value
+        if self.search_key == "animego":
+            replace_href = ["location.href=", "'"]
+            value = value.attrs["onclick"]
+            for item in replace_href:
+                value = value.replace(item, "")
+
+        self.__value = self.search_site_model + value
 
 
 class AnimeToday:

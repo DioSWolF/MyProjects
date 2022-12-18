@@ -64,7 +64,8 @@ class AnimeDB(Base):
     image_name = Column(Text, nullable=True)
     image_page = Column(Text, nullable=True)
     image_path = Column(Text, nullable=False)
-
+    anime_site_link = Column(Text, nullable=False)
+    
     user_info_list_t = relationship("UserInfoDB", secondary="user_to_anime_table", back_populates="anime_list_t")
 
     find_user_info_t = relationship("UserInfoDB", secondary="pagin_user_anime", back_populates="find_anime_t")

@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 from PIL import Image
 
 from telebot.async_telebot import types
@@ -70,7 +74,7 @@ def anime_butoons_create(list_objects: list[AnimeDB], callback: str = None, butt
     i = 0
     
     for objects in list_objects:  
-        bt_text = f"{objects.rus_title} | {objects.eng_title}"
+        bt_text = f"{objects.eng_title} | {objects.rus_title}"
 
         if url == None:
             key_menu = types.InlineKeyboardButton(text=bt_text, callback_data=f"{callback}#{str(i)}")
@@ -100,50 +104,6 @@ def create_special_buttons(keyboards: types.InlineKeyboardMarkup, dict_keys: dic
     keyboards.add(*keys_list)
 
     return keyboards
-
-
-def return_anime_dict(anime_dict, num_list = 9):
-
-    dict_anime = {}
-    i = 1
-    I = 0
-    anim_list = []
-    for anime in anime_dict:
-        anim_list.append(anime)
-        if i == num_list:
-            dict_anime[I] = anim_list
-            anim_list = []
-            i = 0
-            I += 1
-        i += 1
-    if anim_list != []:
-        dict_anime[len(dict_anime)] = anim_list
-        anim_list = []
-
-    return dict_anime
-
-
-def dump_num(call: types.CallbackQuery, anime_pagin_dict: dict|list, dict_num: int) -> int:
-    
-    try:
-        if call.data.split("|||")[0] == "back_page":
-            dict_num -= 1
-
-        elif call.data.split("|||")[0] == "next_page":
-            dict_num += 1
-    except:
-        pass
-
-    if dict_num > len(anime_pagin_dict) - 1:
-        dict_num = len(anime_pagin_dict) - 1
-
-    elif 0 > dict_num:
-        dict_num = 0
-
-    if dict_num == -1:
-        dict_num = 0
-        
-    return dict_num
 
 
 def create_image_text_message(anime_list: list[AnimeDB]):

@@ -7,4 +7,6 @@ Pillow==9.2.0
 asyncio==3.4.3
 pyTelegramBotAPI==4.7.1
 fake_useragent
-aiofile
+aiofiles
+SQLAlchemy
+alembic

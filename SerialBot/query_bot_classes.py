@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 import aiofiles
 import aiohttp
 from bs4 import BeautifulSoup
@@ -9,7 +13,8 @@ from parse_classes import Anime, FindText, InfoUser
 from parse_classes import IdUser, IdUserChat, UserLogin, UserFistName, IsBot, UserLanguage, UserPremium, InfoUser
 from parse_classes import EngTitleAnime, RusTitleAnime, PageAnime, ImageAnime
 
-from bot_token import bot, bot_id, save_image_folder, find_anime_link, find_anime_num_page
+from bot_token import bot, bot_id, save_image_folder
+from search_dicts import SEARCH_SITE_INFO_DICT
 from fake_useragent import UserAgent
 from sqlalchemy.orm import joinedload
 
@@ -90,22 +95,23 @@ class QueryAnime():
 
     def _parse_new_anime(self, element) -> None:
             
-        eng_title = EngTitleAnime(element).value
-        rus_title = RusTitleAnime(element).value
-        page_anime = PageAnime(element).value
-        image_anime = ImageAnime(element)
+        eng_title = EngTitleAnime(element, self.search_key).value
+        rus_title = RusTitleAnime(element, self.search_key).value
+        page_anime = PageAnime(element, self.search_key).value
+        image_anime = ImageAnime(element, self.search_key)
 
         self.parse_anime = Anime(eng_title, rus_title, page_anime, image_anime)
 
 
     def _add_anime_bd(self) -> None:
-            self.anime_info = self.anime_model(eng_title=self.parse_anime.eng_title, rus_title=self.parse_anime.rus_title,  \
-                                anime_page=self.parse_anime.page, image_page=self.parse_anime.image.page, \
-                                image_name=self.parse_anime.image.name, image_path=self.image_path
-                                )
+        image_path = self.image_path + self.search_key + "/"
+        self.anime_info = self.anime_model(eng_title=self.parse_anime.eng_title, rus_title=self.parse_anime.rus_title,  \
+                            anime_page=self.parse_anime.page, image_page=self.parse_anime.image.page, \
+                            image_name=self.parse_anime.image.name, image_path=image_path, anime_site_link=self.search_key
+                            )
 
-            self.session.add(self.anime_info)
-            self.session.commit()
+        self.session.add(self.anime_info)
+        self.session.commit()
 
 
     async def _get_image(self) -> None:
@@ -118,7 +124,7 @@ class QueryAnime():
             resp = await self._get_image()
 
             if resp and resp.status == 200:
-                image_path = self.image_path + "/" + self.parse_anime.image.name
+                image_path = self.image_path + self.search_key + "/" + self.parse_anime.image.name
 
                 async with aiofiles.open(image_path, 'wb') as f:
                     await f.write(await resp.read())
@@ -137,10 +143,10 @@ class QueryAnime():
             self._add_user_anime_find()
 
 
-    async def find_anime(self, message: CallbackQuery, user_info: UserInfoDB) -> None:
+    async def find_anime(self, message: CallbackQuery, user_info: UserInfoDB, search_key: str ="animego") -> None:
         self.message = message
         self.user_info = user_info
-
+        self.search_key = search_key
         self._delete_pagin_anime()
 
         page_list = 1
@@ -149,20 +155,20 @@ class QueryAnime():
         async with self.client_session_model() as self.client_session:
 
             find_text = self.find_text_model(self.message).value
+            for self.search_key, site_page in SEARCH_SITE_INFO_DICT.items():
+                while stop == []:
 
-            while stop == []:
+                    self.headers = {"User-Agent": self.fake_agent_model().random}
 
-                self.headers = {"User-Agent": self.fake_agent_model().random}
+                    find_link = f"{site_page['link']}{find_text}{site_page['page_list']}{page_list}"
 
-                find_link = f"{find_anime_link}{find_text}{find_anime_num_page}{page_list}"
+                    async with self.client_session.get(find_link, headers=self.headers) as resp: 
+        
+                        self.soup = self.bs_soup_model(await resp.text(), "lxml")
+                        await self._add_new_anime()
+                        stop = self.soup.select(site_page["stop_parse"])
 
-                async with self.client_session.get(find_link, headers=self.headers) as resp: 
-    
-                    self.soup = self.bs_soup_model(await resp.text(), "lxml")
-                    await self._add_new_anime()
-                    stop = self.soup.select(".alert-warning")
-
-                page_list += 1
+                    page_list += 1
 
     
     async def find_random_anime(self, message: Message = None, user_info: UserInfoDB = None) -> None:
