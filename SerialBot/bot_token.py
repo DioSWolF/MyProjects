@@ -14,4 +14,3 @@ find_anime_num_page = "&type=list&page="
 find_new_anime_link = "https://your_site.ua"
 
 save_image_folder = r"./image_list/"
-save_file_folder = r"./save_bin_file/"
