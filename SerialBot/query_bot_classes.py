@@ -2,9 +2,11 @@
 # -*- coding: utf-8 -*-
 
 
+from os import listdir, mkdir
+from os.path import exists
 import aiofiles
 import aiohttp
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from telebot.types import CallbackQuery, Message
 
 from mymodels import AnimeDB, FindAnimeBD, UserInfoDB, UserToAnimeDB, session_db
@@ -14,7 +16,7 @@ from parse_classes import IdUser, IdUserChat, UserLogin, UserFistName, IsBot, Us
 from parse_classes import EngTitleAnime, RusTitleAnime, PageAnime, ImageAnime
 
 from bot_token import bot, bot_id, save_image_folder
-from search_dicts import SEARCH_SITE_INFO_DICT
+from search_dicts import FOLDERS_CREATE_DICT, SEARCH_SITE_INFO_DICT
 from fake_useragent import UserAgent
 from sqlalchemy.orm import joinedload
 
@@ -70,6 +72,11 @@ class QueryUserInfo():
         return self.user_info
 
 
+    def change_user_site(self, new_site: str) -> None:
+        self.session.query(self.user_info_model).filter_by(user_id=self.user_info.user_id).update({self.user_info_model.chose_site : new_site}, synchronize_session=False)
+        self.session.commit()
+
+
 class QueryAnime():
     anime_model = AnimeDB
     user_info_model = UserInfoDB
@@ -94,7 +101,7 @@ class QueryAnime():
         self.session.commit()
 
     def _parse_new_anime(self, element) -> None:
-            
+        
         eng_title = EngTitleAnime(element, self.search_key).value
         rus_title = RusTitleAnime(element, self.search_key).value
         page_anime = PageAnime(element, self.search_key).value
@@ -104,10 +111,10 @@ class QueryAnime():
 
 
     def _add_anime_bd(self) -> None:
-        image_path = self.image_path + self.search_key + "/"
+        
         self.anime_info = self.anime_model(eng_title=self.parse_anime.eng_title, rus_title=self.parse_anime.rus_title,  \
                             anime_page=self.parse_anime.page, image_page=self.parse_anime.image.page, \
-                            image_name=self.parse_anime.image.name, image_path=image_path, anime_site_link=self.search_key
+                            image_name=self.parse_anime.image.name, anime_site_link=self.search_key
                             )
 
         self.session.add(self.anime_info)
@@ -120,20 +127,27 @@ class QueryAnime():
 
 
     async def _save_image(self) -> None:
-        
+            
             resp = await self._get_image()
 
             if resp and resp.status == 200:
-                image_path = self.image_path + self.search_key + "/" + self.parse_anime.image.name
 
-                async with aiofiles.open(image_path, 'wb') as f:
+                image_path = self.image_path + self.search_key + "/" + self.parse_anime.image.name
+                
+                async with aiofiles.open(image_path, "wb") as f:
+
                     await f.write(await resp.read())
-            self.session.query(self.anime_model).filter_by(eng_title=self.parse_anime.eng_title).update({self.anime_model.image_name : self.parse_anime.image.name}, synchronize_session=False)
+
+                    self.session.query(self.anime_model).filter_by(eng_title=self.parse_anime.eng_title).update({self.anime_model.image_name : self.parse_anime.image.name, self.anime_model.image_path : self.image_path + self.search_key + "/"}, synchronize_session=False)
+
             self.session.commit()
         
 
     async def _add_new_anime(self) -> None:
-        for element in self.soup.select(".animes-grid-item"):
+        
+        for element in self.soup.select(self.s_dc_model["select"]):
+            if isinstance(element, NavigableString): 
+                break
             self._parse_new_anime(element)
             self.anime_info = self.session.query(self.anime_model).filter_by(eng_title=self.parse_anime.eng_title).first()
 
@@ -143,10 +157,11 @@ class QueryAnime():
             self._add_user_anime_find()
 
 
-    async def find_anime(self, message: CallbackQuery, user_info: UserInfoDB, search_key: str ="animego") -> None:
+    async def find_anime(self, message: CallbackQuery, user_info: UserInfoDB) -> None:
         self.message = message
         self.user_info = user_info
-        self.search_key = search_key
+        self.search_key = user_info.chose_site
+        self.s_dc_model = SEARCH_SITE_INFO_DICT[self.search_key]
         self._delete_pagin_anime()
 
         page_list = 1
@@ -155,20 +170,26 @@ class QueryAnime():
         async with self.client_session_model() as self.client_session:
 
             find_text = self.find_text_model(self.message).value
-            for self.search_key, site_page in SEARCH_SITE_INFO_DICT.items():
-                while stop == []:
+            i = 0
+            while True:
 
-                    self.headers = {"User-Agent": self.fake_agent_model().random}
+                self.headers = {"User-Agent": self.fake_agent_model().random}
 
-                    find_link = f"{site_page['link']}{find_text}{site_page['page_list']}{page_list}"
+                find_link = f"{self.s_dc_model['link']}{find_text}{self.s_dc_model['page_list']}{page_list}"
 
-                    async with self.client_session.get(find_link, headers=self.headers) as resp: 
-        
-                        self.soup = self.bs_soup_model(await resp.text(), "lxml")
-                        await self._add_new_anime()
-                        stop = self.soup.select(site_page["stop_parse"])
+                async with self.client_session.get(find_link, headers=self.headers) as resp: 
+                    
+                    self.soup = self.bs_soup_model(await resp.text(), "lxml")
+                    
+                    stop = self.soup.select(self.s_dc_model["stop_parse"])
 
-                    page_list += 1
+                    if stop != []:
+                        return
+
+                    await self._add_new_anime()
+
+                    i += 1
+                page_list += 1
 
     
     async def find_random_anime(self, message: Message = None, user_info: UserInfoDB = None) -> None:
@@ -191,6 +212,11 @@ class Singleton(object):
         if not isinstance(class_._instance, class_):
             class_._instance = object.__new__(class_, *args, **kwargs)
 
+            for folder_path, folder in FOLDERS_CREATE_DICT.items():
+                for fold in folder:
+                    if not exists(folder_path + fold):
+                        mkdir(folder_path + fold)
+
         return class_._instance
 
 
@@ -207,6 +233,7 @@ class AnimeToUser():
             new_anime = self.user_to_anime_model(user_id = user_info.user_id, anime_id = anime.anime_id)
             self.session.add(new_anime)
             self.session.commit()
+
 
     def del_anime_user(self, user_info: UserInfoDB, anime: AnimeDB) -> None:
         self.session.query(self.user_to_anime_model).filter_by(user_id=user_info.user_id, anime_id=anime.anime_id).delete()
@@ -303,7 +330,13 @@ class ShowUserList(Singleton):
 
     def _get_user_anime_list(self, user_info: UserInfoDB) -> list[AnimeDB]:
         user_info_query: UserInfoDB = self.session.query(self.user_info_model).filter_by(user_id=user_info.user_id).first()
-        self.data[user_info.user_id] = user_info_query.anime_list_t
+        anime_ls = []
+        
+        for anime in user_info_query.anime_list_t:
+            if anime.anime_site_link == user_info.chose_site:
+                anime_ls.append(anime)
+
+        self.data[user_info.user_id] = anime_ls
 
 
     def get_anime_list(self, user_info: UserInfoDB) -> list[AnimeDB]:

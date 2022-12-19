@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
 
-engine = create_engine('sqlite:///sqlalchemy_example.db')
+engine = create_engine("sqlite:///anime_bd.db")
 DBSession = sessionmaker(bind=engine)
 
 session_db = DBSession()
@@ -15,9 +15,9 @@ class AnimeTodayDB(Base):
     __tablename__ = "anime_today_table"
 
     anime_id = Column(Text, primary_key=True)
-    rus_name = Column(Text, nullable=False)
+    rus_name = Column(Text, nullable=True)
     eng_name = Column(Text, nullable=False)
-    series_number = Column(Integer, nullable=False)
+    series_number = Column(Integer, nullable=True)
     voice_acting = Column(Text, nullable=False)
     anime_page = Column(Text, nullable=False)
     update_date = Column(Date, nullable=False)
@@ -48,6 +48,8 @@ class UserInfoDB(Base):
     language_code = Column(VARCHAR(50), nullable=False)
     is_premium = Column(Text, nullable=True)
     status_subscription = Column(Boolean, default=True, nullable=False)
+    
+    chose_site = Column(Text, nullable=True, default="anitube")
 
     anime_list_t = relationship("AnimeDB", secondary="user_to_anime_table", back_populates="user_info_list_t")
 
@@ -59,11 +61,11 @@ class AnimeDB(Base):
     
     anime_id = Column(Integer, primary_key=True, autoincrement=True)
     eng_title = Column(Text, nullable=False)
-    rus_title =  Column(Text, nullable=False)
+    rus_title =  Column(Text, nullable=True)
     anime_page = Column(Text, nullable=False)
     image_name = Column(Text, nullable=True)
     image_page = Column(Text, nullable=True)
-    image_path = Column(Text, nullable=False)
+    image_path = Column(Text, nullable=True)
     anime_site_link = Column(Text, nullable=False)
     
     user_info_list_t = relationship("UserInfoDB", secondary="user_to_anime_table", back_populates="anime_list_t")
@@ -91,4 +93,3 @@ class FindAnimeBD(Base):
 # Base.metadata.create_all(engine)
 # Base.metadata.bind = engine
 # session_db.commit()
-

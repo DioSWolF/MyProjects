@@ -14,7 +14,7 @@ from push_while_true import find_new_anime_today
 from parse_classes import MyStates 
 from query_bot_classes import AnimeToUser, MessageDeleteId, PaginFindAnime, QueryAnime, QueryUserInfo, ShowUserList
 from query_push_class import QueryAnimeToday
-from search_dicts import SEARCH_SITE_DICT
+from search_dicts import SITE_FLAG
 
 
 #~~~~~~~~~~~~~~~~~~~~~ get close function ~~~~~~~~~~~~~~~~~~~~~ ready
@@ -40,6 +40,28 @@ async def call_find(call: CallbackQuery):
 
 #~~~~~~~~~~~~~~~~~~~~~ /start bot ~~~~~~~~~~~~~~~~~~~~~ ready
 
+async def change_search_site(call):
+    try:
+        message = call.message
+    except AttributeError:
+        message = call
+
+    user_query = QueryUserInfo(message)
+    user_info = user_query.get_user()
+    
+    if len(call.data.split("#")) >= 2:
+        user_query.change_user_site(call.data.split("#")[1])
+        user_info = user_query.get_user()
+    
+    edit_text = f"You have chosen site: {SITE_FLAG[user_info.chose_site]}{user_info.chose_site.capitalize()}{SITE_FLAG[user_info.chose_site]}\nChange anime source?"
+
+    bt_dict = {"anitube": {f"{SITE_FLAG['animego']}animego{SITE_FLAG['animego']}" : "change_search_site#animego", "Back" : "back"}, "animego" : {f"{SITE_FLAG['anitube']}anitube{SITE_FLAG['anitube']}" : "change_search_site#anitube", "Back" : "back"}}
+
+    keyboard = one_type_buttons_create(bt_dict[user_info.chose_site], 1)
+
+    await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=message.id, reply_markup=keyboard)
+
+
 async def start(message: CallbackQuery) -> None:
 
     try:
@@ -57,7 +79,7 @@ async def start(message: CallbackQuery) -> None:
         user_info = user_query.get_user()
 
 #!
-    edit_text = f"\nIrasshaimase, {user_info.user_name}-san!"
+    edit_text = f"\n{SITE_FLAG[user_info.chose_site]}Irasshaimase, {user_info.user_name}-san!{SITE_FLAG[user_info.chose_site]}"
 
     keyboard = one_type_buttons_create(DEF_DICT, 3)
     keyboard = contact_with_me(keyboard)
@@ -85,7 +107,7 @@ async def back_callback(call: CallbackQuery) -> None:
     message_delete = MessageDeleteId()
     await message_delete.special_delete(user_info, 0, -1)
 #!
-    edit_text = f"\nIrasshaimase, {user_info.user_name}-san!"
+    edit_text = f"\n{SITE_FLAG[user_info.chose_site]}Irasshaimase, {user_info.user_name}-san!{SITE_FLAG[user_info.chose_site]}"
 
     keyboard = one_type_buttons_create(DEF_DICT, 3)
     keyboard = contact_with_me(keyboard)
@@ -109,13 +131,12 @@ async def find_anime(call: CallbackQuery) -> None:
 
     user_query = QueryUserInfo(message)
     user_info = user_query.get_user()
-
+    
     message_delete = MessageDeleteId()
 
     await message_delete.special_delete(user_info, 0, -1)
 #!
     edit_text = f"{user_info.user_name}-san, enter the name of the anime and I will find it for you!"
-
     keyboard = one_type_buttons_create(FUNC_BACK_DICT, 2)
 #^
     await bot.set_state(user_info.user_id, MyStates.find_text, message.chat.id)
@@ -154,15 +175,15 @@ async def get_find_list_anime(call: CallbackQuery, callback: CallbackQuery = Non
 
     if callback == None:
         callback = call
-
+    
     if call_data == "":
-        await query_anime.find_anime(message, user_info, "animego")
+        await query_anime.find_anime(message, user_info)
         anime_list = pagin_anime.get_anime_list(user_info)
 
         while len(anime_list) == 0:
             await query_anime.find_random_anime()
             anime_list = pagin_anime.get_anime_list(user_info)
-    
+
     anime_pagin_dict = pagin_anime.get_pagin_anime_dict(user_info)
     dump_num = pagin_anime.dump_num(callback, user_info, anime_pagin_dict)
 #!!!
@@ -456,9 +477,9 @@ async def send_anime_today_message(call: CallbackQuery) -> None:
 
     message_delete = MessageDeleteId()
 
-    for site in SEARCH_SITE_DICT.keys(): 
-        animetoday_query = QueryAnimeToday(site)
-        anime_list = animetoday_query.all_records_today()
+    # for site in SEARCH_SITE_DICT.keys(): 
+    animetoday_query = QueryAnimeToday()
+    anime_list = animetoday_query.all_records_today(user_info)
 
     animetoday_query.add_num_pagin(user_info)
     anime_pagin_dict = animetoday_query.get_pagin_dict()
@@ -467,7 +488,6 @@ async def send_anime_today_message(call: CallbackQuery) -> None:
         return
 
     await message_delete.del_pg_save_mes(user_info)
-
 #!!!
     dump_num = animetoday_query.dump_num(call, user_info, anime_pagin_dict)
     keyboard, message_text = anime_today_buttons(anime_pagin_dict[dump_num])
@@ -521,11 +541,13 @@ async def delete_message(message: CallbackQuery) -> None:
 DICT_FUNC_WORK = {  
                     "/start" : start,
                     "back" : back_callback, 
+
                     # find buttons
                     "find_anime": find_anime, 
                     "get_find_list_anime" : get_find_list_anime,
+                    "change_search_site" : change_search_site,
 
-                    # # need add functions
+                    # need add functions
                     "find_new_series" : send_anime_today_message,
                     "delete_all_push_mes" : delete_all_push_mes,
                     # "selected_pushtime_" : "",
@@ -568,7 +590,7 @@ DEF_DICT = {
             "Search anime" : "find_anime",                               # need to update
             "Show my anime list" : "show_all",                     # need to add
             "Show ongoing anime series" : "find_new_series",                        # need to add
-            # "Choice time to send push(NOT WORCKED)" : "selected_pushtime_",                # need to add
+            "Change anime source" : "change_search_site",                # need to add
             }
 
 

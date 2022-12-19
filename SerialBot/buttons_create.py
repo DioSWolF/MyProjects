@@ -22,9 +22,16 @@ def anime_today_buttons(anime_dict: dict[AnimeTodayDB]) -> types.InlineKeyboardM
     message_text = []
     
     for anime_today in anime_dict:
+
+        if anime_today.site_name == "animego":
+            edit_text = f"You have new series:\n{anime_today.eng_name} | {anime_today.rus_name} \nSeries: {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n\n"
         
-        message_text.append(f"{anime_today.eng_name} | {anime_today.rus_name}\n"\
-            f"Series {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n\n")
+        if anime_today.site_name == "anitube":
+            edit_text = f"You have new series:\n{anime_today.eng_name}\n{anime_today.voice_acting}\n\n"
+
+        message_text.append(edit_text)
+        # message_text.append(f"{anime_today.eng_name} | {anime_today.rus_name}\n"\
+        #     f"Series {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n\n")
 
         if anime_today.eng_name not in buttons:
             buttons[anime_today.eng_name] = types.InlineKeyboardButton(text=f"{anime_today.eng_name} | {anime_today.rus_name}", url=anime_today.anime_page)

@@ -1,9 +1,10 @@
 import asyncio
+from datetime import datetime
 
 from random import randrange
 
 import aiohttp
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, element
 from query_push_class import PushAnimeToday, QueryAnimeToday, SendPush
 from search_dicts import SEARCH_SITE_DICT, SEARCH_TAGS_TODAY_DICT
 
@@ -18,9 +19,11 @@ async def find_new_anime_today() -> None:
     
     async with aiohttp.ClientSession(connector=connector) as session:
         create_push_model = PushAnimeToday()
+
         while True:
             await asyncio.sleep(randrange(150, 250))
             # await asyncio.sleep(2)
+
             headers = {"User-Agent" : UserAgent().random}
 
             try:
@@ -52,24 +55,42 @@ async def create_new_anime_today(anime_today_list: BeautifulSoup, search_key: st
     query_db.clean_records()  
     query_db.all_animeid_today()
     
-    for element in anime_today_list:
-        anime_name = NameFindAnimeToday(element, search_key)
-        series_num = SeriesNumberToday(element, search_key)
-        voice_acting = VoiceActingToday(element, search_key)
-        page = PageAnimeToday(element, search_key)
+    for el in anime_today_list:
+        
+        if isinstance(el, element.NavigableString):
+            break
+
+        anime_name = NameFindAnimeToday(el, search_key)
+        series_num = SeriesNumberToday(el, search_key)
+        voice_acting = VoiceActingToday(el, search_key)
+        page = PageAnimeToday(el, search_key)
 
         headers = {"User-Agent" : UserAgent().random}
-
-        async with session.get(page.value, headers=headers) as resp: #need optimization
+        
+        if search_key == "animego":
             
-            if resp.status == 200:
-                soup = BeautifulSoup(await resp.text(), "lxml")
-                anime_eng_name = EngNameAnimeToday(soup, search_key)
-                find_anime = AnimeToday(anime_name, anime_eng_name, series_num, voice_acting, page, search_key)
+            async with session.get(page.value, headers=headers) as resp: #need optimization
+                
+                if resp.status == 200:
+                    soup = BeautifulSoup(await resp.text(), "lxml")
+                    anime_eng_name = EngNameAnimeToday(soup, search_key)
+                    find_anime = AnimeToday(anime_name, anime_eng_name, series_num, voice_acting, page, search_key)
 
-                if find_anime.anime_id not in query_db.db_list:
-                    query_db.add_new_record(find_anime)
+                    if find_anime.anime_id not in query_db.db_list:
+                        query_db.add_new_record(find_anime)
+
+        if search_key == "anitube":
             
+            anime_eng_name = EngNameAnimeToday(el, search_key)
+            find_anime = AnimeToday(anime_name, anime_eng_name, series_num, voice_acting, page, search_key)
+
+            date_anime = int(el.select_one(".story_date sup").text)
+            day_now = datetime.now().day
+
+            if find_anime.anime_id not in query_db.db_list and date_anime == day_now:
+                query_db.add_new_record(find_anime)
+
+
     query_db.commit_new_records()
 
     return

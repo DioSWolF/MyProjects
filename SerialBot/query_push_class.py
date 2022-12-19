@@ -19,6 +19,7 @@ class QueryAnimeToday():
     list_anime = []
     number_pagin = {}
 
+
     def __init__(self, search_key=None) -> None:
         self.search_key = search_key
 
@@ -74,8 +75,8 @@ class QueryAnimeToday():
         self.db_list: list[str] = db_list[::-1]
 
 
-    def all_records_today(self) -> list[AnimeToday]:
-        db_list_all = self.session.query(self.anime_today_db).filter_by(site_name=self.search_key).all()
+    def all_records_today(self, user_info: UserInfoDB) -> list[AnimeToday]:
+        db_list_all = self.session.query(self.anime_today_db).filter_by(site_name=user_info.chose_site).all()
 
         self.db_list_all: list[AnimeToday] = db_list_all[::-1]
         return self.db_list_all
@@ -151,9 +152,10 @@ class PushAnimeToday():
 
 
     def _create_text_push(self, anime: AnimeTodayDB) -> None:
-        
-        self.push_text = f"You have new series:\n{anime.eng_name} | {anime.rus_name} \nSeries: {anime.series_number}, voice acting: {anime.voice_acting}\n\n"
-
+        if anime.site_name == "animego":
+            self.push_text = f"You have new series:\n{anime.eng_name} | {anime.rus_name} \nSeries: {anime.series_number}, voice acting: {anime.voice_acting}\n\n"
+        if anime.site_name == "anitube":
+            self.push_text = f"You have new series:\n{anime.eng_name}\n{anime.voice_acting}\n\n"
 
     def _get_user_list(self, anime: AnimeTodayDB) -> None:
         anime_find: AnimeDB = self.session.query(self.anime_model).filter_by(eng_title=anime.eng_name).first()  
