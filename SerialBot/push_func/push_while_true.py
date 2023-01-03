@@ -25,8 +25,7 @@ async def find_new_anime_today() -> None:
         create_push_model = PushAnimeToday()
 
         while True:
-            # await asyncio.sleep(randrange(150, 250))
-            await asyncio.sleep(5)
+            await asyncio.sleep(randrange(150, 250))
 
             headers = {"User-Agent" : UserAgent().random}
 
