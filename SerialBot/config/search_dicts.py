@@ -26,10 +26,6 @@ SEARCH_TAGS_TODAY_DICT = {"animego" : {"find_soup" : "#slide-toggle-1"},
                         "anitube" : {"find_soup" : "#dle-content"}
                             }
 
-# FOLDERS_CREATE_DICT = {"/home/diosvolk/" : ["save_data"],
-#                         "/home/diosvolk/save_data/" : ["image_list"], 
-#                         "/home/diosvolk/save_data/image_list/" : ["animego", "anitube"]
-#                         }
 
 FOLDERS_CREATE_DICT = {"./" : ["save_image"],
                         "./save_image/" : ["animego", "anitube"], 
