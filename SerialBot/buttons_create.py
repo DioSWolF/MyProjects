@@ -5,8 +5,8 @@
 from PIL import Image
 
 from telebot.async_telebot import types
-from bot_token import contact_me
-from mymodels import AnimeDB, AnimeTodayDB
+from config.bot_token import contact_me
+from database.mymodels import AnimeDB, AnimeTodayDB
 
 
 def contact_with_me(keyboard: types.InlineKeyboardMarkup) -> types.InlineKeyboardMarkup:

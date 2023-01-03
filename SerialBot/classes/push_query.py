@@ -3,10 +3,9 @@
 
 
 from datetime import datetime, timedelta
-from parse_classes import AnimeToday
-from mymodels import AnimeDB, AnimeTodayDB, PushUserDB, UserInfoDB, session_db
-
-from bot_token import bot
+from parse.push_user import AnimeToday
+from database.mymodels import AnimeDB, AnimeTodayDB, PushUserDB, UserInfoDB, session_db
+from config.bot_token import bot
 from telebot.types import CallbackQuery
 from telebot.async_telebot import types
 
@@ -18,6 +17,7 @@ class QueryAnimeToday():
     session = session_db
     list_anime = []
     number_pagin = {}
+    anime_id_list = []
 
 
     def __init__(self, search_key=None) -> None:
@@ -56,16 +56,16 @@ class QueryAnimeToday():
     
 
     def add_new_record(self, anime: AnimeToday) -> None:
-        if self.search_key == None:
-            raise Exception("SearchKeyError")
 
-        db_anime = self.anime_today_db(anime_id=anime.anime_id, rus_name=anime.name.value, \
-                                eng_name=anime.eng_name.value, series_number=anime.series_number.value,\
-                                voice_acting=anime.voice_acting.value, anime_page=anime.page.value, \
-                                update_date=anime.date_now, site_name = anime.search_key
-                                ) 
-
-        self.list_anime.insert(0, db_anime)
+        if anime.anime_id not in (self.db_list or self.anime_id_list):
+            
+            db_anime = self.anime_today_db(anime_id=anime.anime_id, rus_name=anime.name.value, \
+                                    eng_name=anime.eng_name.value, series_number=anime.series_number.value,\
+                                    voice_acting=anime.voice_acting.value, anime_page=anime.page.value, \
+                                    update_date=anime.date_now, site_name = anime.search_key
+                                    ) 
+            self.anime_id_list.append(anime.anime_id)
+            self.list_anime.insert(0, db_anime)
 
 
     def all_animeid_today(self) -> None:
@@ -138,9 +138,8 @@ class PushAnimeToday():
                 
                 if self.user_list != None:
                     for user_info in self.user_list:
-                        new_record = self.push_user_model(user_id=user_info.user_id, )
-                        new_record = self.push_user_model(user_id=user_info.user_id, anime_id=anime.anime_id,\
-                                                                update_date=self.date_now, anime_page=anime.anime_page, message_text=self.push_text)
+                        new_record = self.push_user_model(user_id=user_info.user_id, anime_id=anime.anime_id, anime_name=anime.eng_name + " | " + anime.rus_name, \
+                                                        update_date=self.date_now, anime_page=anime.anime_page, message_text=self.push_text)
                         self.session.add(new_record)
                         self.session.commit()
 
@@ -153,9 +152,10 @@ class PushAnimeToday():
 
     def _create_text_push(self, anime: AnimeTodayDB) -> None:
         if anime.site_name == "animego":
-            self.push_text = f"You have new series:\n{anime.eng_name} | {anime.rus_name} \nSeries: {anime.series_number}, voice acting: {anime.voice_acting}\n\n"
+            self.push_text = f"You have new series:\n{anime.eng_name} | {anime.rus_name} \nSeries: {anime.series_number}, Voice acting: {anime.voice_acting}\n\n"
         if anime.site_name == "anitube":
-            self.push_text = f"You have new series:\n{anime.eng_name}\n{anime.voice_acting}\n\n"
+            self.push_text = f"You have new series:\n{anime.eng_name}\nEpisode: {anime.series_number}\n, Voice acting: {anime.voice_acting}\n\n"
+
 
     def _get_user_list(self, anime: AnimeTodayDB) -> None:
         anime_find: AnimeDB = self.session.query(self.anime_model).filter_by(eng_title=anime.eng_name).first()  
@@ -187,7 +187,7 @@ class SendPush():
 
     def _create_button(self, push: PushUserDB) -> None:
         keyboard = types.InlineKeyboardMarkup()
-        button = types.InlineKeyboardButton(text=push.message_text, url=push.anime_page)
+        button = types.InlineKeyboardButton(text=push.anime_name, url=push.anime_page)
         keyboard.add(button)
         self.keyboard = keyboard
 

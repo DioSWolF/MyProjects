@@ -18,7 +18,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 
-import mymodels
+import database.mymodels as mymodels
 target_metadata = mymodels.Base.metadata
 
 

@@ -1,9 +1,14 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 from sqlalchemy import VARCHAR, Text, create_engine, Column, Integer, ForeignKey, Boolean, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from config.bot_token import db_folder
 
 
-engine = create_engine("sqlite:///anime_bd.db")
+engine = create_engine(db_folder)
 DBSession = sessionmaker(bind=engine)
 
 session_db = DBSession()
@@ -17,7 +22,7 @@ class AnimeTodayDB(Base):
     anime_id = Column(Text, primary_key=True)
     rus_name = Column(Text, nullable=True)
     eng_name = Column(Text, nullable=False)
-    series_number = Column(Integer, nullable=True)
+    series_number = Column(Text, nullable=True)
     voice_acting = Column(Text, nullable=False)
     anime_page = Column(Text, nullable=False)
     update_date = Column(Date, nullable=False)
@@ -30,6 +35,7 @@ class PushUserDB(Base):
     id =  Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False)
     anime_id = Column(Text, nullable=False)
+    anime_name = Column(Text, nullable=False)
     push_flag = Column(Boolean, nullable=True, default=False)
     update_date = Column(Date, nullable=False)
     anime_page = Column(Text, nullable=False)
@@ -88,6 +94,7 @@ class FindAnimeBD(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("user_info_table.user_id"))
     anime_id = Column(Integer, ForeignKey("anime_table.anime_id"))
+
 
 
 # Base.metadata.create_all(engine)

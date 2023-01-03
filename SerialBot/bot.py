@@ -4,22 +4,24 @@
 
 from telebot.types import CallbackQuery
 from telebot import asyncio_filters
-from bot_token import bot
+from config.bot_token import bot
 import asyncio
 #~~~~~~~~~~~~~~~~~~~~~ create buttons ~~~~~~~~~~~~~~~~~~~~~
 from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, create_image_text_message, anime_today_buttons, contact_with_me
 
 #~~~~~~~~~~~~~~~~~~~~~ state class ~~~~~~~~~~~~~~~~~~~~~
-from push_while_true import find_new_anime_today
-from parse_classes import MyStates 
-from query_bot_classes import AnimeToUser, MessageDeleteId, PaginFindAnime, QueryAnime, QueryUserInfo, ShowUserList
-from query_push_class import QueryAnimeToday
-from search_dicts import SITE_FLAG
+from push_func.push_while_true import find_new_anime_today
+from parse.find_anime import MyStates 
+from classes.bot_query import AnimeToUser, PaginFindAnime, QueryAnime, ShowUserList
+from classes.user_info import QueryUserInfo
+from classes.message import MessageDeleteId
+from classes.push_query import QueryAnimeToday
+from config.search_dicts import SITE_FLAG
 
 
 #~~~~~~~~~~~~~~~~~~~~~ get close function ~~~~~~~~~~~~~~~~~~~~~ ready
 
-async def close(*_):
+async def close(*_) -> None:
     pass
 
 
@@ -27,7 +29,7 @@ async def close(*_):
 
 @bot.message_handler(commands=["start"], content_types=['text'])
 @bot.callback_query_handler(func=lambda callback: True)
-async def call_find(call: CallbackQuery):
+async def call_find(call: CallbackQuery) -> None:
     
     try:
         func = DICT_FUNC_WORK.get(call.data.split("#")[0], close)
@@ -40,7 +42,7 @@ async def call_find(call: CallbackQuery):
 
 #~~~~~~~~~~~~~~~~~~~~~ /start bot ~~~~~~~~~~~~~~~~~~~~~ ready
 
-async def change_search_site(call):
+async def change_search_site(call: CallbackQuery) -> None:
     try:
         message = call.message
     except AttributeError:
