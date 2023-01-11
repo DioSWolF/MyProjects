@@ -15,6 +15,7 @@ from telebot.asyncio_handler_backends import State, StatesGroup
 from config.search_dicts import SEARCH_SITE_DICT
 
 
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ state classes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 class MyStates(StatesGroup):
@@ -74,6 +75,9 @@ class EngTitleAnime(ValueAnime):
         if self.search_key == "anitube":
             value = value.select_one("a, name").text
 
+        if self.search_key == "hdrezka":
+            value = value.select_one(".b-content__inline_item-link a").text
+            
         self.__value = value
 
 
@@ -90,8 +94,11 @@ class RusTitleAnime(ValueAnime):
             value = value.select_one(".h5").select_one("a").get("title")
 
         if self.search_key == "anitube":
-            value = ""
+            value = value.select_one("a, name").text
 
+        if self.search_key == "hdrezka":
+            # value = value.select_one(".b-content__inline_item-link a").text
+            value = " "
         self.__value = value
 
 
@@ -104,10 +111,16 @@ class PageAnime(ValueAnime):
 
     @value.setter
     def value(self, value) -> str: 
+
         if self.search_key == "animego":
             value = value.select_one(".h5").select_one("a").get("href")
+
         if self.search_key == "anitube":
             value = value.select_one("a, name").get("href")
+
+        if self.search_key == "hdrezka":
+            value = value.select_one("a").get("href")
+
         self.__value = value
 
 
@@ -145,6 +158,9 @@ class ImageAnime():
         if self.search_key == "anitube":
             page = page.select_one(".story_post img").get("src")
             page = "https://anitube.in.ua" + page
+
+        if self.search_key == "hdrezka":
+            page = page.select_one("img").get("src")
 
         self.__page = page
 

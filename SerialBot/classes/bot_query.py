@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
+from random import randrange
 from fake_useragent import UserAgent
 import aiofiles
 import aiohttp
@@ -9,7 +10,7 @@ from bs4 import BeautifulSoup, NavigableString
 from sqlalchemy.orm import joinedload
 from database.mymodels import AnimeDB, FindAnimeBD, UserInfoDB, UserToAnimeDB, session_db
 from parse.find_anime import Anime, FindText, EngTitleAnime, RusTitleAnime, PageAnime, ImageAnime
-from singleton import Singleton
+from classes.singleton import Singleton
 from telebot.types import CallbackQuery, Message
 from config.bot_token import save_image_folder
 from config.search_dicts import SEARCH_SITE_INFO_DICT
@@ -97,6 +98,8 @@ class QueryAnime():
 
 
     async def find_anime(self, message: CallbackQuery, user_info: UserInfoDB) -> None:
+        # start = datetime.now()
+
         self.message = message
         self.user_info = user_info
         self.search_key = user_info.chose_site
@@ -109,27 +112,31 @@ class QueryAnime():
         async with self.client_session_model() as self.client_session:
 
             find_text = self.find_text_model(self.message).value
-            i = 0
+
             while True:
 
-                self.headers = {"User-Agent": self.fake_agent_model().random}
+                self.headers = {"User-Agent" : UserAgent().random, 
+                                "Keep-Alive": str(randrange(60, 100)),
+                                "Connection": "keep-alive"
+                                }
 
                 find_link = f"{self.s_dc_model['link']}{find_text}{self.s_dc_model['page_list']}{page_list}"
 
                 async with self.client_session.get(find_link, headers=self.headers) as resp: 
-                    
-                    self.soup = self.bs_soup_model(await resp.text(), "lxml")
-                    
-                    stop = self.soup.select(self.s_dc_model["stop_parse"])
 
-                    if stop != []:
-                        return
+                    if resp.status == 200:
+                        self.soup = self.bs_soup_model(await resp.text(), "lxml")
+                        
+                        stop = self.soup.select(self.s_dc_model["stop_parse"])
 
-                    await self._add_new_anime()
+                        if stop != []:
+                            # print(datetime.now() - start)
+                            return
 
-                    i += 1
-                page_list += 1
+                        await self._add_new_anime()
 
+                        page_list += 1
+        
     
     async def find_random_anime(self, message: Message = None, user_info: UserInfoDB = None) -> None:
 
@@ -141,7 +148,7 @@ class QueryAnime():
         self.message.text = rand_word.get_random_word()[0:3]
 
         await self.find_anime(self.message, self.user_info)
-
+    
 
 class AnimeToUser():
     session = session_db
@@ -259,7 +266,7 @@ class ShowUserList(Singleton):
             if anime.anime_site_link == user_info.chose_site:
                 anime_ls.append(anime)
 
-        self.data[user_info.user_id] = anime_ls
+        self.data[user_info.user_id] = anime_ls[::-1]
 
 
     def get_anime_list(self, user_info: UserInfoDB) -> list[AnimeDB]:

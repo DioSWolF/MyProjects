@@ -16,7 +16,7 @@ from classes.bot_query import AnimeToUser, PaginFindAnime, QueryAnime, ShowUserL
 from classes.user_info import QueryUserInfo
 from classes.message import MessageDeleteId
 from classes.push_query import QueryAnimeToday
-from config.search_dicts import SITE_FLAG
+from config.search_dicts import BT_DICT, SITE_FLAG
 
 
 #~~~~~~~~~~~~~~~~~~~~~ get close function ~~~~~~~~~~~~~~~~~~~~~ ready
@@ -55,11 +55,9 @@ async def change_search_site(call: CallbackQuery) -> None:
         user_query.change_user_site(call.data.split("#")[1])
         user_info = user_query.get_user()
     
-    edit_text = f"You have chosen site: {SITE_FLAG[user_info.chose_site]}{user_info.chose_site.capitalize()}{SITE_FLAG[user_info.chose_site]}\nChange anime source?"
+    edit_text = f"You have chosen site: {SITE_FLAG[user_info.chose_site]}\nChange anime source?"
 
-    bt_dict = {"anitube": {f"{SITE_FLAG['animego']}animego{SITE_FLAG['animego']}" : "change_search_site#animego", "Back" : "back"}, "animego" : {f"{SITE_FLAG['anitube']}anitube{SITE_FLAG['anitube']}" : "change_search_site#anitube", "Back" : "back"}}
-
-    keyboard = one_type_buttons_create(bt_dict[user_info.chose_site], 1)
+    keyboard = one_type_buttons_create(BT_DICT, 1)
 
     await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=message.id, reply_markup=keyboard)
 
@@ -162,7 +160,7 @@ async def get_find_list_anime(call: CallbackQuery, callback: CallbackQuery = Non
     except AttributeError:
         message = call
         call_data = ""
-
+    
     user_query = QueryUserInfo(message)
     query_anime = QueryAnime()
     pagin_anime = PaginFindAnime()
@@ -173,8 +171,10 @@ async def get_find_list_anime(call: CallbackQuery, callback: CallbackQuery = Non
     await message_delete.delete_message_list(user_info)
 
     pagin_anime.add_num_pagin(user_info)
-    anime_list = pagin_anime.get_anime_list(user_info)
-
+    try:
+        anime_list = pagin_anime.get_anime_list(user_info)
+    except:
+        return
     if callback == None:
         callback = call
     
@@ -198,7 +198,7 @@ async def get_find_list_anime(call: CallbackQuery, callback: CallbackQuery = Non
         navig_bt = {"Previous page":"back_page|||find", "Next page":"next_page|||find"}
         keyboard = create_special_buttons(keyboard, navig_bt)
 
-    image_text_message = create_image_text_message(anime_pagin_dict[dump_num])
+    image_text_message = await create_image_text_message(anime_pagin_dict[dump_num])
 
     edit_text = f"{user_info.user_name}-san, I have found {len(anime_list)} anime for you!\n\nClick the button to open anime on website\nPage №{dump_num + 1}/{len(anime_pagin_dict)}"
 #^^^
@@ -243,7 +243,7 @@ async def change_buttons_add_new(call: CallbackQuery) -> None:
         navig_bt = {"Previous page":"back_page|||change_add", "Next page":"next_page|||change_add"}
         keyboard = create_special_buttons(keyboard, navig_bt)
     
-    image_text_message = create_image_text_message(anime_pagin_dict[dump_num])
+    image_text_message = await  create_image_text_message(anime_pagin_dict[dump_num])
     
     edit_text = f"{user_info.user_name}-san, I have found {len(anime_list)} anime for you!\n\nClick to add series to your anime list\nPage №{dump_num + 1}/{len(anime_pagin_dict)}"
 #^^^
@@ -305,7 +305,7 @@ async def add_anime_in_list(call: CallbackQuery) -> None:
     anime_list = pagin_anime.get_anime_list(user_info)
     await message_delete.delete_message_list(user_info)
 
-    image_text_message = create_image_text_message(anime_pagin_dict[dump_num])
+    image_text_message = await  create_image_text_message(anime_pagin_dict[dump_num])
     
     # edit_text = f"{user_info.user_name.value}-san, I have found {len(ANIME_FIND_DICT[user_info.chat_id])} anime for you!\n\n{''.join(anime_list)}Click to add series to your anime list\nPage №{DICT_NUM_FIND[user_info.chat_id] + 1}/{len(FIND_ANIME_DICT_PAGINATION[user_info.chat_id])}"
     edit_text = f"{user_info.user_name}-san, I have found {len(anime_list)} anime for you!\n\nClick to add series to your anime list\nPage №{dump_num + 1}/{len(anime_pagin_dict)}"
@@ -341,7 +341,7 @@ async def start_show_list_anime(call: CallbackQuery) -> None:
     await message_delete.delete_message_list(user_info)
     
     anime_pagin_dict = show_user_anime_query.get_pagin_anime_dict(user_info)
-    
+
     dump_num = show_user_anime_query.dump_num(call, user_info, anime_pagin_dict)
 #!!!
     spec_dict = {"Back" : "back", "Delete series from your anime list" : "change_buttons_delete", "Search for new anime": "find_anime"}
@@ -353,8 +353,8 @@ async def start_show_list_anime(call: CallbackQuery) -> None:
         keyboard = create_special_buttons(keyboard, navig_bt)
 
     edit_text = f"{user_info.user_name}-san, you have {len(anime_list)} anime.\n\nClick the button to open anime on website\n Page №{dump_num + 1}/{len(anime_pagin_dict)}"
-    
-    image_text_message = create_image_text_message(anime_pagin_dict[dump_num])
+  
+    image_text_message = await create_image_text_message(anime_pagin_dict[dump_num])
 #^^^
     mes_id = await bot.send_media_group(chat_id=user_info.chat_id, media=image_text_message)
     message_delete.add_message_id(user_info, mes_id)
@@ -397,7 +397,7 @@ async def change_buttons_delete(call: CallbackQuery) -> None:
 
     edit_text = f"{user_info.user_name}-san, you have {len(anime_list)} anime.\n\nClick to delete series from your anime list\nPage №{dump_num + 1}/{len(anime_pagin_dict)}"
 
-    image_text_message = create_image_text_message(anime_pagin_dict[dump_num])
+    image_text_message = await create_image_text_message(anime_pagin_dict[dump_num])
 #^^^
     mes_id = await bot.send_media_group(chat_id=user_info.chat_id, media=image_text_message)
     message_delete.add_message_id(user_info, mes_id)
@@ -454,7 +454,7 @@ async def delete_anime(call: CallbackQuery) -> None:
 #^^^
     await message_delete.delete_message_list(user_info)
 
-    image_text_message = create_image_text_message(anime_pagin_dict[dump_num])
+    image_text_message = await create_image_text_message(anime_pagin_dict[dump_num])
     
     mes_id = await bot.send_media_group(chat_id=user_info.chat_id, media=image_text_message)
     message_delete.add_message_id(user_info, mes_id)
@@ -467,6 +467,17 @@ async def delete_anime(call: CallbackQuery) -> None:
     return
 
 
+#~~~~~~~~~~~~~~~~~~~~~ send ongoing list today to user ~~~~~~~~~~~~~~~~~~~~~ 
+
+def send_ongoing_list(call: CallbackQuery) -> None:
+    message = call.message
+
+    user_query = QueryUserInfo(message)
+    message_delete = MessageDeleteId()
+    
+    user_info = user_query.get_user()
+
+
 #~~~~~~~~~~~~~~~~~~~~~ send anime list today to user ~~~~~~~~~~~~~~~~~~~~~ 
 
 
@@ -475,39 +486,37 @@ async def send_anime_today_message(call: CallbackQuery) -> None:
     message = call.message
 
     user_query = QueryUserInfo(message)
-    user_info = user_query.get_user()
-
     message_delete = MessageDeleteId()
-
-    # for site in SEARCH_SITE_DICT.keys(): 
     animetoday_query = QueryAnimeToday()
-    anime_list = animetoday_query.all_records_today(user_info)
 
+    user_info = user_query.get_user()
+    anime_list = animetoday_query.all_records_today(user_info)
     animetoday_query.add_num_pagin(user_info)
     anime_pagin_dict = animetoday_query.get_pagin_dict()
-    
+
     if len(anime_list) < 1:
         return
 
     await message_delete.del_pg_save_mes(user_info)
 #!!!
+
     dump_num = animetoday_query.dump_num(call, user_info, anime_pagin_dict)
+
     keyboard, message_text = anime_today_buttons(anime_pagin_dict[dump_num])
 
     if len(anime_pagin_dict) > 1:
         navig_bt = {"Previous page":"back_page|||find_new_series", "Next page":"next_page|||find_new_series"}
         keyboard = create_special_buttons(keyboard, navig_bt) 
-          
+
     del_bt = {"Delete message" :"delete_all_push_mes"}
     keyboard = create_special_buttons(keyboard, del_bt)   
 
-    edit_text = f"{user_info.user_name}-san, you have {len(anime_list)} anime.\n\n{''.join(message_text)}Page №{dump_num + 1}/{len(anime_pagin_dict)}"
+    edit_text = f"{user_info.user_name}-san, you have {len(anime_list)} new episodes.\n\n{''.join(message_text)}Page №{dump_num + 1}/{len(anime_pagin_dict)}"
 #^^^
     mes_id = await bot.send_message(user_info.user_id, edit_text, reply_markup=keyboard)
 
     message_delete.add_save_pg_mes_id(user_info, mes_id)
-    message_delete.add_pagin_mes_id(user_info, mes_id)
-
+    # message_delete.add_pagin_mes_id(user_info, mes_id)
     return 
 
 
@@ -518,13 +527,13 @@ async def delete_all_push_mes(call: CallbackQuery) -> None:
     user_query = QueryUserInfo(message)
 
     user_info = user_query.get_user()
-
-    await message_delete.delete_pagin_mes_list(user_info)
+    
+    await message_delete.delete_pagin_mes_list(user_info, message)
 
     return 
 
 
-#~~~~~~~~~~~~~~~~~~~~~ delete strange message ~~~~~~~~~~~~~~~~~~~~~ ready
+#~~~~~~~~~~~~~~~~~~~~~ delete strange message ~~~~~~~~~~~~~~~~~~~~~ 
 
 @bot.message_handler()
 async def delete_message(message: CallbackQuery) -> None:

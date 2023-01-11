@@ -5,39 +5,41 @@
 from datetime import datetime, timedelta
 from parse.push_user import AnimeToday
 from database.mymodels import AnimeDB, AnimeTodayDB, PushUserDB, UserInfoDB, session_db
-from config.bot_token import bot
+from config.bot_token import bot, server_time
 from telebot.types import CallbackQuery
 from telebot.async_telebot import types
+from sqlalchemy.exc import InvalidRequestError
 
 
 class QueryAnimeToday():
-    anime_today_db = AnimeTodayDB
-    
-    date_now: datetime = (datetime.now() + timedelta(hours=2)).date()
     session = session_db
-    list_anime = []
+    anime_today_db = AnimeTodayDB
     number_pagin = {}
+    list_anime = []
     anime_id_list = []
 
-
-    def __init__(self, search_key=None) -> None:
+    def __init__(self, search_key: str = None) -> None:
         self.search_key = search_key
-
+        self.date_now: datetime = (datetime.now() + timedelta(hours=server_time)).date()
+        
 
     def add_num_pagin(self, user_info: UserInfoDB) -> None:
         if user_info.user_id not in self.number_pagin:
+
             self.number_pagin[user_info.user_id] = 0
             
 
     def dump_num(self, call: CallbackQuery, user_info: UserInfoDB, anime_pagin_dict: dict|list) -> int:
         dict_num = self.number_pagin[user_info.user_id]
-        
+
         try:
+            
             if call.data.split("|||")[0] == "back_page":
                 dict_num -= 1
 
             elif call.data.split("|||")[0] == "next_page":
                 dict_num += 1
+
         except:
             pass
 
@@ -49,6 +51,7 @@ class QueryAnimeToday():
 
         if dict_num == -1:
             dict_num = 0
+ 
 
         self.number_pagin[user_info.user_id] = dict_num
 
@@ -56,14 +59,14 @@ class QueryAnimeToday():
     
 
     def add_new_record(self, anime: AnimeToday) -> None:
-
-        if anime.anime_id not in (self.db_list or self.anime_id_list):
+        
+        if (self.query_animeid(anime=anime)) and (anime.anime_id not in self.anime_id_list):
             
             db_anime = self.anime_today_db(anime_id=anime.anime_id, rus_name=anime.name.value, \
                                     eng_name=anime.eng_name.value, series_number=anime.series_number.value,\
                                     voice_acting=anime.voice_acting.value, anime_page=anime.page.value, \
-                                    update_date=anime.date_now, site_name = anime.search_key
-                                    ) 
+                                    update_date=anime.date_now, site_name = anime.search_key) 
+                                    
             self.anime_id_list.append(anime.anime_id)
             self.list_anime.insert(0, db_anime)
 
@@ -71,24 +74,36 @@ class QueryAnimeToday():
     def all_animeid_today(self) -> None:
         db_list = self.session.query(self.anime_today_db.anime_id).filter_by(site_name=self.search_key).all()  
         db_list = list([anime_id[0] for anime_id in db_list])
-
         self.db_list: list[str] = db_list[::-1]
 
 
     def all_records_today(self, user_info: UserInfoDB) -> list[AnimeToday]:
         db_list_all = self.session.query(self.anime_today_db).filter_by(site_name=user_info.chose_site).all()
-
         self.db_list_all: list[AnimeToday] = db_list_all[::-1]
+
         return self.db_list_all
 
 
+    def query_animeid(self, anime: AnimeToday):
+        find_anime_id = self.session.query(self.anime_today_db).filter_by(anime_id=anime.anime_id).first()
+
+        if find_anime_id == None:
+            return True
+
+        return False
+
+
     def commit_new_records(self) -> None:
-        if self.list_anime != []:
-            self.session.add_all(self.list_anime)
-        self.session.commit()
+        try:
+            if self.list_anime != []:
+                self.session.add_all(self.list_anime)
+            self.session.commit()
+        except InvalidRequestError:
+            self.session.commit()
 
 
     def clean_records(self) -> None:
+        # await bot.send_message(chat_id=635261244, text=self.date_now)
         self.session.query(AnimeTodayDB).filter(AnimeTodayDB.update_date != self.date_now).delete()
         self.session.commit()
 
@@ -122,7 +137,7 @@ class PushAnimeToday():
     anime_today_model = AnimeTodayDB
     anime_model = AnimeDB
     session = session_db
-    date_now: datetime = (datetime.now() + timedelta(hours=2)).date()
+    date_now: datetime = (datetime.now() + timedelta(hours=server_time)).date()
     user_list = None
 
 
@@ -146,7 +161,6 @@ class PushAnimeToday():
 
     def _check_push_record(self, anime: AnimeTodayDB) -> PushUserDB:
         check_push_recod = self.session.query(self.push_user_model).filter_by(anime_id=anime.anime_id).first()
-        
         return check_push_recod
 
 
@@ -155,10 +169,12 @@ class PushAnimeToday():
             self.push_text = f"You have new series:\n{anime.eng_name} | {anime.rus_name} \nSeries: {anime.series_number}, Voice acting: {anime.voice_acting}\n\n"
         if anime.site_name == "anitube":
             self.push_text = f"You have new series:\n{anime.eng_name}\nEpisode: {anime.series_number}\n, Voice acting: {anime.voice_acting}\n\n"
+        if anime.site_name == "hdrezka":
+            self.push_text = f"You have new series:\n{anime.eng_name}\nEpisode: {anime.series_number}\n, Voice acting: {anime.voice_acting}\n\n"
 
 
     def _get_user_list(self, anime: AnimeTodayDB) -> None:
-        anime_find: AnimeDB = self.session.query(self.anime_model).filter_by(eng_title=anime.eng_name).first()  
+        anime_find: AnimeDB = self.session.query(self.anime_model).filter_by(eng_title=anime.eng_name, anime_site_link = anime.site_name).first()  
 
         if anime_find != None:
             self.user_list: list[UserInfoDB]|None = anime_find.user_info_list_t
@@ -176,7 +192,7 @@ class PushAnimeToday():
 
 
 class SendPush():
-    session =session_db
+    session = session_db
     push_user_model = PushUserDB
     bot_cls = bot
 

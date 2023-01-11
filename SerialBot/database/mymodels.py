@@ -21,7 +21,7 @@ class AnimeTodayDB(Base):
 
     anime_id = Column(Text, primary_key=True)
     rus_name = Column(Text, nullable=True)
-    eng_name = Column(Text, nullable=False)
+    eng_name = Column(Text, nullable=True)
     series_number = Column(Text, nullable=True)
     voice_acting = Column(Text, nullable=False)
     anime_page = Column(Text, nullable=False)
@@ -78,6 +78,8 @@ class AnimeDB(Base):
 
     find_user_info_t = relationship("UserInfoDB", secondary="pagin_user_anime", back_populates="find_anime_t")
 
+    anime_ongoing = relationship("OngoingBD", backref="anime_table")
+
 
 class UserToAnimeDB(Base):
     __tablename__ = "user_to_anime_table"
@@ -95,6 +97,13 @@ class FindAnimeBD(Base):
     user_id = Column(Integer, ForeignKey("user_info_table.user_id"))
     anime_id = Column(Integer, ForeignKey("anime_table.anime_id"))
 
+
+class OngoingBD(Base):
+    __tablename__ = "ongoing_table"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    anime_id = Column(Integer, ForeignKey("anime_table.anime_id"))
+    date_update = Column(Date,  nullable=False)
 
 
 # Base.metadata.create_all(engine)

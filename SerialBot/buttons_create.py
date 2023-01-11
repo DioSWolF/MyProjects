@@ -2,11 +2,17 @@
 # -*- coding: utf-8 -*-
 
 
+from random import randrange
 from PIL import Image
+import aiofiles
+import aiohttp
+from bs4 import BeautifulSoup
+from fake_useragent import UserAgent
 
 from telebot.async_telebot import types
-from config.bot_token import contact_me
-from database.mymodels import AnimeDB, AnimeTodayDB
+from config.bot_token import contact_me, save_image_folder
+
+from database.mymodels import AnimeDB, AnimeTodayDB, session_db
 
 
 def contact_with_me(keyboard: types.InlineKeyboardMarkup) -> types.InlineKeyboardMarkup:
@@ -20,18 +26,16 @@ def anime_today_buttons(anime_dict: dict[AnimeTodayDB]) -> types.InlineKeyboardM
     buttons = {}
     bt_list = []
     message_text = []
-    
+
     for anime_today in anime_dict:
 
-        if anime_today.site_name == "animego":
-            edit_text = f"You have new series:\n{anime_today.eng_name} | {anime_today.rus_name} \nSeries: {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n\n"
-        
         if anime_today.site_name == "anitube":
-            edit_text = f"You have new series:\n{anime_today.eng_name}\n{anime_today.voice_acting}\n\n"
+            edit_text = f"\n{anime_today.eng_name}\n{anime_today.voice_acting}\n"
+
+        else:
+            edit_text = f"\n{anime_today.eng_name} | {anime_today.rus_name}\nSeries: {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n"
 
         message_text.append(edit_text)
-        # message_text.append(f"{anime_today.eng_name} | {anime_today.rus_name}\n"\
-        #     f"Series {anime_today.series_number}, voice acting: {anime_today.voice_acting}\n\n")
 
         if anime_today.eng_name not in buttons:
             buttons[anime_today.eng_name] = types.InlineKeyboardButton(text=f"{anime_today.eng_name} | {anime_today.rus_name}", url=anime_today.anime_page)
@@ -44,7 +48,7 @@ def anime_today_buttons(anime_dict: dict[AnimeTodayDB]) -> types.InlineKeyboardM
 
 
 def one_type_buttons_create(dict_functions: dict, byttons_in_row:int, keybord_row: int = 3, callback: str = None) -> types.InlineKeyboardMarkup:
-
+    
     keyboard = types.InlineKeyboardMarkup()
     keyboard.row_width = keybord_row
     i = 1
@@ -113,14 +117,66 @@ def create_special_buttons(keyboards: types.InlineKeyboardMarkup, dict_keys: dic
     return keyboards
 
 
-def create_image_text_message(anime_list: list[AnimeDB]):
+async def create_image_text_message(anime_list: list[AnimeDB]) -> list[types.InputMediaPhoto]:
     new_list = []
     for anime in anime_list:
+        try:
+
+            image_and_text = types.InputMediaPhoto(Image.open(f"{anime.image_path}{anime.image_name}"), caption=f"{anime.rus_title}\n{anime.eng_title}")
+            
+        except FileNotFoundError:
+
+            anime = await load_image(anime)
+
         image_and_text = types.InputMediaPhoto(Image.open(f"{anime.image_path}{anime.image_name}"), caption=f"{anime.rus_title}\n{anime.eng_title}")
+
         new_list.append(image_and_text)
    
     return new_list
 
 
 
+async def load_image(anime: AnimeDB) -> AnimeDB:
 
+    async with aiohttp.ClientSession() as client_session:
+        
+        headers = {"User-Agent" : UserAgent().random, 
+                "Keep-Alive": str(randrange(60, 100)),
+                "Connection": "keep-alive"
+                }
+
+        async with client_session.request(method="GET", headers=headers, url=anime.image_page) as resp:
+
+            if resp.status == 404:
+
+                async with client_session.request(method="GET", headers=headers, url=anime.anime_page) as resp_img:
+
+                    if resp_img.status == 200:
+
+                        soup = BeautifulSoup(await resp_img.text(), "lxml")
+                        soup = soup.select_one(".anime-poster").find("img").get("src")
+                        session_db.query(AnimeDB).filter_by(eng_title=anime.eng_title).update(\
+                                                            {AnimeDB.image_page : soup}, \
+                                                            synchronize_session=False)
+                        session_db.commit()
+                        anime = session_db.query(AnimeDB).filter_by(eng_title=anime.eng_title, anime_site_link = anime.anime_site_link).first()
+                        resp.status = 200
+
+            if resp.status == 200:
+
+                image_path = save_image_folder + anime.anime_site_link + "/" + anime.image_name
+                
+                async with aiofiles.open(image_path, "wb") as f:
+
+                    await f.write(await resp.read())
+                    image_path = save_image_folder + anime.anime_site_link + "/"
+
+                    session_db.query(AnimeDB).filter_by(eng_title=anime.eng_title).update(\
+                    {AnimeDB.image_name : anime.image_name,\
+                    AnimeDB.image_path : image_path}, \
+                    synchronize_session=False)
+    
+                    session_db.commit()
+                    anime = session_db.query(AnimeDB).filter_by(eng_title=anime.eng_title, anime_site_link = anime.anime_site_link).first()
+                
+        return anime

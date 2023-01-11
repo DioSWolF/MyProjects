@@ -3,13 +3,16 @@ from telebot.asyncio_storage import StateMemoryStorage
 
 
 
-bot_id = ""
-token = ""      
+bot_id = "{id}"
+token = "{Token}"      
 
+contact_me = "DioSWolF"
 
+bot_id = {int}
+         
 bot = telebot.async_telebot.AsyncTeleBot(token, state_storage=StateMemoryStorage())
 
-save_image_folder = r"./save_data/image_list/"
+db_folder = r"sqlite:///{file_name}"
+save_image_folder = r"{Folder for image save}"
 
-db_folder = r"sqlite:///./database/anime_bd.db"
-
+server_time = 1

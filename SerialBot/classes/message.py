@@ -4,7 +4,7 @@
 
 from database.mymodels import UserInfoDB
 from telebot.types import Message
-from singleton import Singleton
+from classes.singleton import Singleton
 from config.bot_token import bot
 
 
@@ -65,22 +65,20 @@ class MessageDeleteId(Singleton):
             self.pagin_data[user_info.user_id].append(message)
     
 
-    async def delete_pagin_mes_list(self, user_info: UserInfoDB) -> None:
-        for mes_id in self.pagin_data[user_info.chat_id]:  
-            try:
-                await bot.delete_message(chat_id=user_info.chat_id, message_id=mes_id.message_id)
-                index_mes = self.pagin_data[user_info.chat_id].index(mes_id)
-                self.pagin_data[user_info.chat_id].pop(index_mes)
-            except:
-                pass
+    async def delete_pagin_mes_list(self, user_info: UserInfoDB, message) -> None:
+
+        # try:
+        #     for mes_id in self.pagin_data[user_info.chat_id]:  
+            
+        #         await bot.delete_message(chat_id=user_info.chat_id, message_id=mes_id.message_id)
+        #         index_mes = self.pagin_data[user_info.chat_id].index(mes_id)
+        #         self.pagin_data[user_info.chat_id].pop(index_mes)
+        # except:
+            await bot.delete_message(chat_id=user_info.chat_id, message_id=message.message_id)
 
 
     def add_save_pg_mes_id(self, user_info: UserInfoDB, message: Message) -> None:
-        # if user_info.user_id not in self.pagin_data_save:
             self.pagin_data_save[user_info.user_id] = message
-
-        # else:
-        #     self.pagin_data_save[user_info.user_id].append(message)
 
 
     async def del_pg_save_mes(self, user_info: UserInfoDB) -> None:
