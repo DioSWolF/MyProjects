@@ -4,18 +4,22 @@
 
 from telebot.types import CallbackQuery
 from telebot import asyncio_filters
-from config.bot_token import bot
+
 import asyncio
-#~~~~~~~~~~~~~~~~~~~~~ create buttons ~~~~~~~~~~~~~~~~~~~~~
+
 from buttons_create import one_type_buttons_create, anime_butoons_create, create_special_buttons, create_image_text_message, anime_today_buttons, contact_with_me
 
-#~~~~~~~~~~~~~~~~~~~~~ state class ~~~~~~~~~~~~~~~~~~~~~
 from push_func.push_while_true import find_new_anime_today
 from parse.find_anime import MyStates 
+
 from classes.bot_query import AnimeToUser, PaginFindAnime, QueryAnime, ShowUserList
 from classes.user_info import QueryUserInfo
 from classes.message import MessageDeleteId
 from classes.push_query import QueryAnimeToday
+from classes.analitic import AnaliticClickData
+from classes.error_decorator import ChangeSubscription
+
+from config.bot_token import bot
 from config.search_dicts import BT_DICT, SITE_FLAG
 
 
@@ -27,13 +31,16 @@ async def close(*_) -> None:
 
 #~~~~~~~~~~~~~~~~~~~~~ callback_functions ~~~~~~~~~~~~~~~~~~~~~
 
+
 @bot.message_handler(commands=["start"], content_types=['text'])
 @bot.callback_query_handler(func=lambda callback: True)
+@AnaliticClickData
+@ChangeSubscription
 async def call_find(call: CallbackQuery) -> None:
     
     try:
         func = DICT_FUNC_WORK.get(call.data.split("#")[0], close)
-    
+
     except AttributeError:
         func = DICT_FUNC_WORK.get(call.text, close)
 
@@ -41,6 +48,7 @@ async def call_find(call: CallbackQuery) -> None:
 
 
 #~~~~~~~~~~~~~~~~~~~~~ /start bot ~~~~~~~~~~~~~~~~~~~~~ ready
+
 
 async def change_search_site(call: CallbackQuery) -> None:
     try:
@@ -60,6 +68,7 @@ async def change_search_site(call: CallbackQuery) -> None:
     keyboard = one_type_buttons_create(BT_DICT, 1)
 
     await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=message.id, reply_markup=keyboard)
+
 
 
 async def start(message: CallbackQuery) -> None:
@@ -128,7 +137,7 @@ async def find_anime(call: CallbackQuery) -> None:
         message = call.message
     except AttributeError:
         message = call
-
+    
     user_query = QueryUserInfo(message)
     user_info = user_query.get_user()
     
@@ -141,9 +150,11 @@ async def find_anime(call: CallbackQuery) -> None:
 #^
     await bot.set_state(user_info.user_id, MyStates.find_text, message.chat.id)
     await asyncio.sleep(0.5)
-    await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=message.id, reply_markup=keyboard)
-    # await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=chat_info.message_id.value, reply_markup=keyboard)
 
+    await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=message.id, reply_markup=keyboard)
+
+    # await bot.edit_message_text(edit_text, chat_id=user_info.chat_id, message_id=chat_info.message_id.value, reply_markup=keyboard)
+    
     return 
 
 
@@ -209,7 +220,6 @@ async def get_find_list_anime(call: CallbackQuery, callback: CallbackQuery = Non
     
     mes_id = await bot.send_message(chat_id=user_info.chat_id, text=edit_text, reply_markup=keyboard)
     message_delete.add_message_id(user_info, mes_id)
-
     return  
 
 
@@ -255,6 +265,7 @@ async def change_buttons_add_new(call: CallbackQuery) -> None:
     mes_id = await bot.send_message(chat_id=user_info.chat_id, text=edit_text, reply_markup=keyboard)
     message_delete.add_message_id(user_info, mes_id)
 
+    return
 
  
 async def add_anime_in_list(call: CallbackQuery) -> None:
@@ -598,10 +609,10 @@ DICT_FUNC_WORK = {
 
 
 DEF_DICT = {
-            "Search anime" : "find_anime",                               # need to update
-            "Show my anime list" : "show_all",                     # need to add
-            "Show ongoing anime series" : "find_new_series",                        # need to add
-            "Change anime source" : "change_search_site",                # need to add
+            "Search anime" : "find_anime",                               
+            "Show my anime list" : "show_all",                     
+            "Show ongoing anime series" : "find_new_series",                        
+            "Change anime source" : "change_search_site",                
             }
 
 

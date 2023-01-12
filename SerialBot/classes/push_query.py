@@ -9,6 +9,8 @@ from config.bot_token import bot, server_time
 from telebot.types import CallbackQuery
 from telebot.async_telebot import types
 from sqlalchemy.exc import InvalidRequestError
+from telebot.asyncio_helper import ApiTelegramException
+
 
 
 class QueryAnimeToday():
@@ -167,17 +169,21 @@ class PushAnimeToday():
     def _create_text_push(self, anime: AnimeTodayDB) -> None:
         if anime.site_name == "animego":
             self.push_text = f"You have new series:\n{anime.eng_name} | {anime.rus_name} \nSeries: {anime.series_number}, Voice acting: {anime.voice_acting}\n\n"
+        
         if anime.site_name == "anitube":
             self.push_text = f"You have new series:\n{anime.eng_name}\nEpisode: {anime.series_number}\n, Voice acting: {anime.voice_acting}\n\n"
+        
         if anime.site_name == "hdrezka":
             self.push_text = f"You have new series:\n{anime.eng_name}\nEpisode: {anime.series_number}\n, Voice acting: {anime.voice_acting}\n\n"
 
 
     def _get_user_list(self, anime: AnimeTodayDB) -> None:
-        anime_find: AnimeDB = self.session.query(self.anime_model).filter_by(eng_title=anime.eng_name, anime_site_link = anime.site_name).first()  
-
+        anime_find: AnimeDB = self.session.query(self.anime_model).filter_by(eng_title=anime.eng_name, anime_site_link = anime.site_name, ).first()  
+        self.user_list: list[UserInfoDB]|None  = []
         if anime_find != None:
-            self.user_list: list[UserInfoDB]|None = anime_find.user_info_list_t
+            for user in anime_find.user_info_list_t:
+                if user.status_subscription:
+                    self.user_list.append(user)
         else:
             self.user_list = None
 
@@ -191,9 +197,11 @@ class PushAnimeToday():
         self.session.commit()
 
 
+
 class SendPush():
     session = session_db
     push_user_model = PushUserDB
+    user_db_model = UserInfoDB
     bot_cls = bot
 
 
@@ -217,10 +225,19 @@ class SendPush():
         self._get_push_list()
         for push in self.push_list:
             self._create_button(push)
-            await self.bot_cls.send_message(push.user_id, push.message_text, reply_markup=self.keyboard)
-            self._change_flag(push)
+            try:
+                await self.bot_cls.send_message(push.user_id, push.message_text, reply_markup=self.keyboard)
+                self._change_flag(push)
+            except ApiTelegramException as excep:
+                self.change_subscript(push, excep)
 
 
-        
+    def change_subscript(self, push:PushUserDB,  excep: ApiTelegramException) -> None:
 
+        if "bot was blocked by the user" in excep.description.lower():
+
+            self.session.query(self.user_db_model).filter_by(user_id = push.user_id).update(
+                            {self.user_db_model.status_subscription : False})
+
+            self.session.commit()
 

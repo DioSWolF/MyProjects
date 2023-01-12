@@ -5,7 +5,7 @@
 from config.bot_token import bot_id
 from database.mymodels import session_db, UserInfoDB
 from parse.user_info import IdUser, IdUserChat, UserFistName, UserLogin, UserLanguage, IsBot, UserPremium, InfoUser
-from telebot.types import CallbackQuery
+from telebot.types import Message
 
 
 class QueryUserInfo():
@@ -13,7 +13,7 @@ class QueryUserInfo():
     user_info_model = UserInfoDB
 
 
-    def __init__(self, message: CallbackQuery) -> None:
+    def __init__(self, message: Message) -> None:
         self.message = message
 
 
@@ -49,14 +49,17 @@ class QueryUserInfo():
     def add_new_user(self) -> None:
         self._parse_user_info()
         self._add_user_info()
+        
 
 
     def get_user(self) -> UserInfoDB:
         chat_id = IdUserChat(self.message).value
         self.user_info = self.session.query(self.user_info_model).filter_by(chat_id=chat_id).first()
+
         return self.user_info
 
 
     def change_user_site(self, new_site: str) -> None:
         self.session.query(self.user_info_model).filter_by(user_id=self.user_info.user_id).update({self.user_info_model.chose_site : new_site}, synchronize_session=False)
         self.session.commit()
+

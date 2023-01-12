@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 
+from datetime import datetime
 from sqlalchemy import VARCHAR, Text, create_engine, Column, Integer, ForeignKey, Boolean, Date
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from config.bot_token import db_folder
 
 
@@ -21,7 +21,7 @@ class AnimeTodayDB(Base):
 
     anime_id = Column(Text, primary_key=True)
     rus_name = Column(Text, nullable=True)
-    eng_name = Column(Text, nullable=True)
+    eng_name = Column(Text, nullable=False)
     series_number = Column(Text, nullable=True)
     voice_acting = Column(Text, nullable=False)
     anime_page = Column(Text, nullable=False)
@@ -54,7 +54,8 @@ class UserInfoDB(Base):
     language_code = Column(VARCHAR(50), nullable=False)
     is_premium = Column(Text, nullable=True)
     status_subscription = Column(Boolean, default=True, nullable=False)
-    
+    update_date = Column(Date, default=datetime.now().date(), nullable=True)
+
     chose_site = Column(Text, nullable=True, default="anitube")
 
     anime_list_t = relationship("AnimeDB", secondary="user_to_anime_table", back_populates="user_info_list_t")
@@ -103,7 +104,42 @@ class OngoingBD(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     anime_id = Column(Integer, ForeignKey("anime_table.anime_id"))
-    date_update = Column(Date,  nullable=False)
+    date_update = Column(Date, nullable=False)
+
+
+class AnaliticUserBD(Base):
+    __tablename__ = "analitic_user_table"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    new_users = Column(Integer, nullable=True, default=0) 
+    all_users = Column(Integer, nullable=True, default=0)
+    subscription_users = Column(Integer, nullable=True, default=0)
+    all_push_users = Column(Integer, nullable=True, default=0)
+
+    date_create = Column(Date, default=datetime(year=datetime.now().year, month=datetime.now().month, day=1).date(), nullable=False)
+
+
+class AnaliticClickBD(Base):
+    __tablename__ = "analitic_click_table"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    start_bot =  Column(Integer, nullable=True, default=0) 
+    month_start_bot = Column(Integer, nullable=True, default=0) 
+
+    find_anime = Column(Integer, nullable=True, default=0)   
+    month_find_anime = Column(Integer, nullable=True, default=0)   
+
+    new_today = Column(Integer, nullable=True, default=0)   
+    month_new_today = Column(Integer, nullable=True, default=0)  
+
+    change_site = Column(Integer, nullable=True, default=0)  
+    month_change_site = Column(Integer, nullable=True, default=0)  
+
+    show_all = Column(Integer, nullable=True, default=0)   
+    month_show_all = Column(Integer, nullable=True, default=0)   
+
+    date_create = Column(Date, default=datetime(year=datetime.now().year, month=datetime.now().month, day=1).date(), nullable=False)
 
 
 # Base.metadata.create_all(engine)

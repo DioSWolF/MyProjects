@@ -11,18 +11,17 @@ from bs4 import BeautifulSoup, element
 from fake_useragent import UserAgent
 from random import randrange
 
-
 from config.bot_token import server_time
+from config.search_dicts import SEARCH_SITE_DICT, SEARCH_TAGS_TODAY_DICT
 
 from classes.push_query import PushAnimeToday, QueryAnimeToday, SendPush
 from classes.ongoing_list import OngoingAnime
+from classes.analitic import AnaliticUserData
 
 from parse.push_user import NameFindAnimeToday, EngNameAnimeToday, SeriesNumberToday, VoiceActingToday, AnimeToday, PageAnimeToday, DateUpdate
 
-from config.search_dicts import SEARCH_SITE_DICT, SEARCH_TAGS_TODAY_DICT
 
-
-scheduler = AsyncIOScheduler({'apscheduler.job_defaults.max_instances': 2})
+# scheduler = AsyncIOScheduler({'apscheduler.job_defaults.max_instances': 2})
 
 
 async def find_ongoing():
@@ -30,12 +29,17 @@ async def find_ongoing():
     await ogoing_find.find_anime_ongoing()
 
 
+async def analitic_user_data():
+    analitic = AnaliticUserData()
+    analitic.create_month_data()
+
 
 async def find_new_anime_today() -> None:
 
     # scheduler.add_job(find_ongoing, "interval", seconds=5)
+    # scheduler.add_job(analitic_user_data, 'cron', day_of_week='mon-sun', hour=23, minute=00)
     # scheduler.start()
-
+    
     connector = aiohttp.TCPConnector(force_close=True)
     async with aiohttp.ClientSession(connector=connector) as session:
         create_push_model = PushAnimeToday()
@@ -44,7 +48,8 @@ async def find_new_anime_today() -> None:
             await asyncio.sleep(randrange(150, 250))
             # await asyncio.sleep(10)
 
-            headers = {"User-Agent" : UserAgent().random, 
+            headers = {
+                    "User-Agent" : UserAgent().random, 
                     "Keep-Alive": str(randrange(60, 100)),
                     "Connection": "keep-alive"
                     }
@@ -92,7 +97,7 @@ async def create_new_anime_today(anime_today_list: BeautifulSoup, search_key: st
         day_now = (datetime.now() + timedelta(hours=server_time)).day
 
         try:
-            if isinstance(el, element.NavigableString):# or DateUpdate(el, search_key).value != day_now:
+            if isinstance(el, element.NavigableString):
                 query_db.commit_new_records()
                 break 
 
@@ -173,24 +178,12 @@ async def add_hdrezka(el: BeautifulSoup, search_key: str,  query_db: QueryAnimeT
     voice_acting = VoiceActingToday(el, search_key)
     page = PageAnimeToday(el, search_key)
     anime_eng_name = EngNameAnimeToday(el, search_key)
-    find_anime = AnimeToday(anime_name, series_num, voice_acting, page, search_key, anime_eng_name)
 
-    # headers = {"User-Agent" : UserAgent().random, 
-    #         "Keep-Alive": str(randrange(60, 100)),
-    #         "Connection": "keep-alive"
-    #         }
+    find_anime = AnimeToday(anime_name, series_num, voice_acting, page, search_key, anime_eng_name)
 
     if query_db.query_animeid(find_anime):
         query_db.add_new_record(find_anime)
-        # async with session.get(page.value, headers=headers) as resp: #need optimization
-            
-        #     if resp.status == 200:
-                
-        #         soup = BeautifulSoup(await resp.text(), "lxml")
 
-            
-            
-            # find_anime = AnimeToday(anime_name, series_num, voice_acting, page, search_key, anime_eng_name)
     return "stop"
             
 
